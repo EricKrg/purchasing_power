@@ -6,9 +6,11 @@
 
 # load packages
 #install.packages("acs", clean=T)
+
 library(devtools)
 install_github("vqv/ggbiplot")
 pacman::p_load(tidyverse, sf, sp, acs, mapview, tigris, data.table, ggbiplot)
+
 
 library(raster)
 library(sp)
@@ -41,7 +43,9 @@ state.west<- state %>%
 acs::api.key.install('73562ee0a098c703e3b06e5341c284a6654d0c1f')
 
 
+
 area <- geo.make(state = c(state.west$abb), county = "*",tract = "*")
+
 # Age, Sex, Income (Households), Employment (Class of Worker), Education, Family,
 
 #ENDYEAR was orignally set to 2016, but due to incomplete datasets this was not
@@ -92,6 +96,7 @@ find_d <- function(dname){
     }
   }
 }
+
 library(rgdal)
 if (find_d("counties") && find_d("states")==F){
   counties <- counties(state.west$abb)
@@ -102,19 +107,11 @@ if (find_d("counties") && find_d("states")==F){
     n = n +1
   }
   tracts <- do.call(rbind_tigris, tract_list)
-  states <- states()
-  if (class(counties) == "sp"){
-  counties <- st_as_sf(counties)
-  states <- st_as_sf(states)
-  tracts <- st_as_sf(tracts)
-  }
-}
 save.image("data.Rdata")
 
 
 #thematic data -cleaning
 tract_name <- B21001@geography$tract
-Total_pop <- as.data.table(estimate(total))# total Population
 
 for (i in grep("B.*[0-9]$", ls(),value = T)){
   print(i)
@@ -140,11 +137,12 @@ all_index <- list()
 employed <- B23001e[, .SD, .SDcols =
                        B23001e[, grep("*Employed$", colnames(B23001e))]] #total employed
 
+
 tot_employ <- data.frame(tract_name, B23001e[,1], employed) #total per county
 
 colnames(tot_employ)<- c("tract","Total",paste0("col", 1:26))
-tot_employ$Worker <- apply(tot_employ[, c(3:28)],sum, MARGIN = 1)
 
+tot_employ$Worker <- apply(tot_employ[, c(3:28)],sum, MARGIN = 1)
 
 #index
 tot_employ$index <- index(tot_employ, "Worker")
@@ -157,6 +155,7 @@ all_index[[1]] <- tot_employ
 
 noEns <- B27001e[, .SD, .SDcols =
                        B27001e[, grep("*No health insurance coverage$", colnames(B27001e))]]
+
 HE <- data.frame(tract_name,B27001e[,1],noEns)
 
 colnames(HE)<- c("county","Total",paste0("col", 1:18))
@@ -171,6 +170,7 @@ all_index[[2]] <- HE
 #**********************************************************
 # 3 Variable 3: Number of cars
 #**********************************************************
+
 tot_cars <- data.frame(tract_name, B08015e[,1], Total_pop)
 colnames(tot_cars)<- c("tract","cars","Total")
 
@@ -182,6 +182,7 @@ all_index[[3]] <- tot_cars
 #**********************************************************
 # Variable 4: Poverty status #############################
 #**********************************************************
+
 richkids <- data.frame(tract_name,B17021e[,c(22,1)]) # above poverty
 colnames(richkids) <- c("county", "non_poverty", "Total")
 
@@ -192,6 +193,7 @@ all_index[[4]] <- richkids
 #**********************************************************
 # Variable 5: Income ######################################
 #**********************************************************
+
 income <- data.frame(tract_name, B19301e, as.numeric(Total_pop$`Total Population: Total`))
 colnames(income) <- c("county", "income","Total")
 
@@ -204,6 +206,7 @@ all_index[[5]] <- income
 #**********************************************************
 # Variable 6: Family Income ###############################
 #**********************************************************
+
 high_income <- data.frame(county = tract_name, family_income = apply(B19101e[, c(9:17)],sum, MARGIN = 1),
                      Total = apply(B19101e[,1:17], sum,MARGIN = 1)) #income over 40.000$
 #index family in
@@ -214,18 +217,20 @@ all_index[[6]] <- high_income
 #**********************************************************
 # Variable 7: House value #################################
 #**********************************************************
+
 house_value <- data.frame(county = tract_name,  house_value =apply(B25075e[, c(15:27)],sum, MARGIN = 1),
                           Total = B25075e[,1]) #value over 100k$
 colnames(house_value)[3] <- "Total"
 #index value
 house_value$index <- index(house_value, "house_value")
-
 all_index[[7]] <- house_value
 #**********************************************************
 # Variable 8: Nr. of family households with 3 or more persons
 #**********************************************************
-family <- data.frame(county = tract_name,  family = B11016e[,2],
-                          Total = B11016e[,1])
+
+
+family <- data.frame(county = county_name,  family = B11016e[,2],
+                     Total = B11016e[,1])
 colnames(family)[3] <- "Total"
 colnames(family)[2] <- "family"
 #index Income
@@ -236,7 +241,8 @@ all_index[[8]] <- family
 #**********************************************************
 # Variable 9: Education, high school degree ##############
 #**********************************************************
-high_school <- data.frame(county = tract_name, high_school = B06009e[,3],
+
+high_school <- data.frame(county = county_name, high_school = B06009e[,3],
                      Total = B06009e[,1])
 colnames(high_school)[3] <- "Total"
 colnames(high_school)[2] <- "high-school"
@@ -248,7 +254,8 @@ all_index[[9]] <- high_school
 #**********************************************************
 # Variable 10 & 11: Sex ##############
 #**********************************************************
-male <- data.frame(county = tract_name, male = B21001e[, 4],
+
+male <- data.frame(county = county_name, male = B21001e[, 4],
                           Total = Total_pop)  # male over 18
 colnames(male)[2] <- "male"
 colnames(male)[3] <- "Total"
@@ -257,7 +264,8 @@ male$index <- index(male, "male")
 
 all_index[[10]] <- male
 ######
-female <- data.frame(county = tract_name, female = B21001e[, 22],
+
+female <- data.frame(county = county_name, female = B21001e[, 22],
                      Total = Total_pop)  # female over 18
 
 colnames(female)[2] <- "female"
@@ -271,7 +279,7 @@ all_index[[11]] <- female
 # Variable 12: Age ##############
 #**********************************************************
 #males and females between the age of 18-65
-age <- data.frame(county = tract_name, age = apply(B21001e[, c(7,10,13,25,28,31)],sum, MARGIN = 1),
+age <- data.frame(county = county_name, age = apply(B21001e[, c(7,10,13,25,28,31)],sum, MARGIN = 1),
                    Total = Total_pop)  #
 colnames(age)[3] <- "Total"
 age$index <- index(age, "age")
@@ -281,7 +289,6 @@ all_index[[12]] <- age
 #********************************************************
 # combine all data
 #********************************************************
-
 
 index_list <- list()
 j = 1
@@ -484,4 +491,3 @@ county_scores <- data_t[,mean(scores), by ="COUNTYFP"]
 county_scores <- left_join(counties, county_scores)
 
 mapview(county_scores, zcol="V1", legend = T)
-
