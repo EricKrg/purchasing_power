@@ -107,11 +107,22 @@ if (find_d("counties") && find_d("states")==F){
     n = n +1
   }
   tracts <- do.call(rbind_tigris, tract_list)
+  counties <- st_as_sf(counties)
+  tracts <- st_as_sf(tracts)
+  # tract_counties <- st_intersection(tracts, counties)
+  # tract_counties <- tract_counties[,c("NAMELSAD","TRACTCE")]
+  # st_geometry(tract_counties) <- NULL
+}
+  
+  
 save.image("data.Rdata")
-
+load("data.Rdata")
 
 #thematic data -cleaning
-tract_name <- B21001@geography$tract
+tract_name <- rownames(estimate(B21001))
+tract_name2 <- B21001@geography$tract
+c_name <- B21001@geography$NAME
+Total_pop <- as.data.table(estimate(total))
 
 for (i in grep("B.*[0-9]$", ls(),value = T)){
   print(i)
@@ -229,7 +240,7 @@ all_index[[7]] <- house_value
 #**********************************************************
 
 
-family <- data.frame(county = county_name,  family = B11016e[,2],
+family <- data.frame(tract = tract_name,  family = B11016e[,2],
                      Total = B11016e[,1])
 colnames(family)[3] <- "Total"
 colnames(family)[2] <- "family"
@@ -242,7 +253,7 @@ all_index[[8]] <- family
 # Variable 9: Education, high school degree ##############
 #**********************************************************
 
-high_school <- data.frame(county = county_name, high_school = B06009e[,3],
+high_school <- data.frame(tract = tract_name, high_school = B06009e[,3],
                      Total = B06009e[,1])
 colnames(high_school)[3] <- "Total"
 colnames(high_school)[2] <- "high-school"
@@ -255,7 +266,7 @@ all_index[[9]] <- high_school
 # Variable 10 & 11: Sex ##############
 #**********************************************************
 
-male <- data.frame(county = county_name, male = B21001e[, 4],
+male <- data.frame(tract = tract_name, male = B21001e[, 4],
                           Total = Total_pop)  # male over 18
 colnames(male)[2] <- "male"
 colnames(male)[3] <- "Total"
@@ -265,7 +276,7 @@ male$index <- index(male, "male")
 all_index[[10]] <- male
 ######
 
-female <- data.frame(county = county_name, female = B21001e[, 22],
+female <- data.frame(tract = tract_name, female = B21001e[, 22],
                      Total = Total_pop)  # female over 18
 
 colnames(female)[2] <- "female"
@@ -279,7 +290,7 @@ all_index[[11]] <- female
 # Variable 12: Age ##############
 #**********************************************************
 #males and females between the age of 18-65
-age <- data.frame(county = county_name, age = apply(B21001e[, c(7,10,13,25,28,31)],sum, MARGIN = 1),
+age <- data.frame(tract = tract_name, age = apply(B21001e[, c(7,10,13,25,28,31)],sum, MARGIN = 1),
                    Total = Total_pop)  #
 colnames(age)[3] <- "Total"
 age$index <- index(age, "age")
@@ -298,15 +309,21 @@ for (i in all_index){
   j = j +1
   if (j > length(all_index)){
     index_list[[j]] <- tract_name
+    index_list[[j+1]] <- tract_name2
+    index_list[[j+2]] <- c_name
     pca_data <- do.call(cbind, index_list)
     colnames(pca_data)[j] <- "tract_name"
+    colnames(pca_data)[j+1] <- "tract_name2"
+    colnames(pca_data)[j+2] <- "c_name"
     colnames(pca_data)[5] <- "income"
+    
     pca_data <- pca_data[complete.cases(pca_data),]
   }
 }
 
 saveRDS(pca_data,file = "./pca_data.Rds")
 pca_data <- readRDS("pca_data.Rds")
+
 #********************************************************
 # PCA
 #********************************************************
@@ -472,22 +489,38 @@ loadings <- pca$loadings
 
 scores <- pca$scores
 scores <- pca$scores[,1]+ 100
-scores <- data.frame(scores, TRACTCE = pca_data$tract_name)
+scores <- data.frame(scores, TRACTCE = pca_data$tract_name2)
 
 #merge with spatial data
-tract_scores <- left_join(tracts, scores, by = "TRACTCE")
-
-county290 <- tract_scores %>%
-  filter(COUNTYFP == "290")
-
-mapview(county290, zcol = "scores", legend = T)
 
 
+
+tract_scores <- merge(tracts,scores, by = "TRACTCE",)
+
+county009 <- tract_scores %>%
+  filter(STATEFP=="06") %>%
+  filter(COUNTYFP=="029")
+
+
+#aggregation
+
+mapview(county009, zcol = "scores")
+
+t <- sf::st_join(counties, tract_scores, join = st_intersects, mean)
+
+t <- st_join(counties, tract_scores) %>% 
+  group_by(counties$geometry) %>% 
+  summarise(mean(scores))
 
 data_t = data.table(tract_scores)
-data_t <- na.omit(data_t)
-county_scores <- data_t[,mean(scores), by ="COUNTYFP"]
+county_scores <- data_t[,mean(scores), by =c("STATEFP","COUNTYFP")]
 
 county_scores <- left_join(counties, county_scores)
 
 mapview(county_scores, zcol="V1", legend = T)
+
+
+
+# raster::shapefile(as(tracts,"Spatial"),"tract.shp")
+# raster::shapefile(as(counties,"Spatial"),"count.shp")
+
