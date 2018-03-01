@@ -1,4 +1,7 @@
-#01_Data
+
+###############################################
+#01_Data--------------------------------------
+###############################################
 
 #working census key: 73562ee0a098c703e3b06e5341c284a6654d0c1f
 
@@ -7,29 +10,12 @@
 # load packages
 #install.packages("acs", clean=T)
 
-library(devtools)
-install_github("vqv/ggbiplot")
+#library(devtools)
+#install_github("vqv/ggbiplot")
 pacman::p_load(tidyverse, sf, sp, acs, mapview, tigris, data.table, ggbiplot)
-
-
-library(raster)
-library(sp)
-library(tigris)
-library(abind)
-library(data.table)
-library(vegan)
-library(RColorBrewer)
-library(classInt)
-library(rgeos)
-library(bibtex)
-library(ggfortify)
-library(ggbiplot)
-library(stats)
-
 
 # load data
 data(state)
-
 # make a df
 state <- data.frame(name = state.name, area = state.area, abb = state.abb,
                     division = state.division, region = state.region, x = state.center$x,
@@ -38,12 +24,12 @@ state <- data.frame(name = state.name, area = state.area, abb = state.abb,
 state.west<- state %>%
   filter(region == "West")
 
-
-#census data
+#*******************************
+#census data download###########
+#*******************************
 acs::api.key.install('73562ee0a098c703e3b06e5341c284a6654d0c1f')
 
-
-
+# for fetch geography
 area <- geo.make(state = c(state.west$abb), county = "*",tract = "*")
 
 # Age, Sex, Income (Households), Employment (Class of Worker), Education, Family,
@@ -51,7 +37,6 @@ area <- geo.make(state = c(state.west$abb), county = "*",tract = "*")
 #ENDYEAR was orignally set to 2016, but due to incomplete datasets this was not
 #possible (i.e. health insurance, was not provided with a 2016 data set).
 #additionally only table numbers startin with B.* are working with acs.fetch()
-
 
 #Sex by Age
 B21001 <- acs.fetch(endyear = 2015, span = 5, geography = area,
@@ -96,8 +81,6 @@ find_d <- function(dname){
     }
   }
 }
-
-library(rgdal)
 if (find_d("counties") && find_d("states")==F){
   counties <- counties(state.west$abb)
   n = 1
@@ -109,16 +92,14 @@ if (find_d("counties") && find_d("states")==F){
   tracts <- do.call(rbind_tigris, tract_list)
   counties <- st_as_sf(counties)
   tracts <- st_as_sf(tracts)
-  # tract_counties <- st_intersection(tracts, counties)
-  # tract_counties <- tract_counties[,c("NAMELSAD","TRACTCE")]
-  # st_geometry(tract_counties) <- NULL
 }
-  
-  
-save.image("data.Rdata")
-load("data.Rdata")
+#save.image("data.Rdata")
+#load("data.Rdata")
 
-#thematic data -cleaning
+#****************************
+#thematic data -cleaning#####
+#****************************
+
 tract_name <- rownames(estimate(B21001))
 tract_name2 <- B21001@geography$tract
 c_name <- B21001@geography$NAME
@@ -129,16 +110,17 @@ for (i in grep("B.*[0-9]$", ls(),value = T)){
   assign(paste0(i,"e"),as.data.table(estimate(get(i))))
 } # cleaned vers. ending with e
 
-# Index
+# Index formula
 index <- function(df, dftarget){
   df <- as.data.frame(df)
   dftarget <- df %>%
     dplyr::select(dftarget)
   Total <- df %>%
     dplyr::select(Total)
-  avg <-(sum(dftarget,na.rm = T))/(sum(Total))
-  return(((dftarget/Total)/avg))
+  avg <-(sum(dftarget, na.rm = T))/(sum(Total, na.rm = T))
+  return(((dftarget/Total)/avg*100))
 }
+
 
 all_index <- list()
 #**********************************************************
@@ -146,15 +128,11 @@ all_index <- list()
 #**********************************************************
 
 employed <- B23001e[, .SD, .SDcols =
-                       B23001e[, grep("*Employed$", colnames(B23001e))]] #total employed
-
-
-tot_employ <- data.frame(tract_name, B23001e[,1], employed) #total per county
-
-colnames(tot_employ)<- c("tract","Total",paste0("col", 1:26))
-
-tot_employ$Worker <- apply(tot_employ[, c(3:28)],sum, MARGIN = 1)
-
+                       B23001e[, grep("*Employed$", colnames(B23001e))]]
+#tot_employ <- data.frame(tract_name, B23001e[,1], employed)
+tot_employ <- data.frame(tract_name,B23001e[,1], employed)
+tot_employ$Worker <- apply(tot_employ[, c(3:28)],sum, MARGIN = 1)#all workers per tract
+colnames(tot_employ)[1:2]<- c("tract","Total")
 #index
 tot_employ$index <- index(tot_employ, "Worker")
 
@@ -168,8 +146,8 @@ noEns <- B27001e[, .SD, .SDcols =
                        B27001e[, grep("*No health insurance coverage$", colnames(B27001e))]]
 
 HE <- data.frame(tract_name,B27001e[,1],noEns)
-
-colnames(HE)<- c("county","Total",paste0("col", 1:18))
+#B27001e[,1]
+colnames(HE)<- c("tract","Total",paste0("col", 1:18))
 HE$colsum <- apply(HE[, c(3:20)],sum, MARGIN = 1)
 HE$ensurance <- HE$Total - HE$colsum
 
@@ -194,9 +172,8 @@ all_index[[3]] <- tot_cars
 # Variable 4: Poverty status #############################
 #**********************************************************
 
-richkids <- data.frame(tract_name,B17021e[,c(22,1)]) # above poverty
-colnames(richkids) <- c("county", "non_poverty", "Total")
-
+richkids <- data.frame(tract_name,B17021e[,22], Total_pop) # above poverty
+colnames(richkids) <- c("tract", "non_poverty", "Total")
 # Index
 richkids$index <- index(richkids, "non_poverty")
 
@@ -205,12 +182,11 @@ all_index[[4]] <- richkids
 # Variable 5: Income ######################################
 #**********************************************************
 
-income <- data.frame(tract_name, B19301e, as.numeric(Total_pop$`Total Population: Total`))
+income <- data.frame(tract_name, B19301e, Total_pop)
 colnames(income) <- c("county", "income","Total")
 
 #index Income
-avg <- sum(income$income,na.rm = T)/21513
-income$index <- income$income/avg
+income$index <- index(income, "income")
 
 all_index[[5]] <- income
 
@@ -238,8 +214,6 @@ all_index[[7]] <- house_value
 #**********************************************************
 # Variable 8: Nr. of family households with 3 or more persons
 #**********************************************************
-
-
 family <- data.frame(tract = tract_name,  family = B11016e[,2],
                      Total = B11016e[,1])
 colnames(family)[3] <- "Total"
@@ -250,15 +224,19 @@ family$index <- index(family, "family")
 all_index[[8]] <- family
 
 #**********************************************************
-# Variable 9: Education, high school degree ##############
+# Variable 9: Education,  degree ##############
 #**********************************************************
-
-high_school <- data.frame(tract = tract_name, high_school = B06009e[,3],
+bsc <- B06009e[, .SD, .SDcols =
+                 B06009e[, grep("Bachelor", colnames(B06009e))]]
+high_school <- data.frame(tract = tract_name, bsc,
                      Total = B06009e[,1])
-colnames(high_school)[3] <- "Total"
-colnames(high_school)[2] <- "high-school"
+
+high_school$bsc <- apply(high_school[, c(2:6)],sum, MARGIN = 1)
+
+colnames(high_school)[7] <- "Total"
+colnames(high_school)[8] <- "bsc"
 #index Income
-high_school$index <- index(high_school, "high-school")
+high_school$index <- index(high_school, "bsc")
 
 all_index[[9]] <- high_school
 
@@ -266,7 +244,7 @@ all_index[[9]] <- high_school
 # Variable 10 & 11: Sex ##############
 #**********************************************************
 
-male <- data.frame(tract = tract_name, male = B21001e[, 4],
+male <- data.frame(tract = tract_name, male = B21001e[,4],
                           Total = Total_pop)  # male over 18
 colnames(male)[2] <- "male"
 colnames(male)[3] <- "Total"
@@ -276,7 +254,7 @@ male$index <- index(male, "male")
 all_index[[10]] <- male
 ######
 
-female <- data.frame(tract = tract_name, female = B21001e[, 22],
+female <- data.frame(tract = tract_name, female = B21001e[,22],
                      Total = Total_pop)  # female over 18
 
 colnames(female)[2] <- "female"
@@ -298,9 +276,8 @@ age$index <- index(age, "age")
 all_index[[12]] <- age
 
 #********************************************************
-# combine all data
+# combine all data######################################
 #********************************************************
-
 index_list <- list()
 j = 1
 for (i in all_index){
@@ -316,211 +293,14 @@ for (i in all_index){
     colnames(pca_data)[j+1] <- "tract_name2"
     colnames(pca_data)[j+2] <- "c_name"
     colnames(pca_data)[5] <- "income"
-    
+
     pca_data <- pca_data[complete.cases(pca_data),]
   }
 }
 
+#************************************
+#Saving#############################
+#************************************
 saveRDS(pca_data,file = "./pca_data.Rds")
-pca_data <- readRDS("pca_data.Rds")
-
-#********************************************************
-# PCA
-#********************************************************
-
-pca <- princomp(pca_data[,1:8], cor = TRUE)
-#length(pca_data)-1
-# importance of components
-summary(pca)
-
-
-View(pca$scores)
-
-
-# Varianz
-gsa.var <- pca$sdev^2
-histogram(gsa.var/sum(gsa.var))
-
-# plot ggbiplot
-ggbiplot_custom <- function (pcobj, size ,choices = 1:2, scale = 1, pc.biplot = TRUE,
-          obs.scale = 1 - scale, var.scale = scale, groups = NULL,
-          ellipse = FALSE, ellipse.prob = 0.68, labels = NULL, labels.size = 3,
-          alpha = 1, var.axes = TRUE, circle = FALSE, circle.prob = 0.69,
-          varname.size = 3, varname.adjust = 1.5, varname.abbrev = FALSE,
-          ...)
-{
-  library(ggplot2)
-  library(plyr)
-  library(scales)
-  library(grid)
-  library(ggthemes)
-  stopifnot(length(choices) == 2)
-  if (inherits(pcobj, "prcomp")) {
-    nobs.factor <- sqrt(nrow(pcobj$x) - 1)
-    d <- pcobj$sdev
-    u <- sweep(pcobj$x, 2, 1/(d * nobs.factor), FUN = "*")
-    v <- pcobj$rotation
-  }
-  else if (inherits(pcobj, "princomp")) {
-    nobs.factor <- sqrt(pcobj$n.obs)
-    d <- pcobj$sdev
-    u <- sweep(pcobj$scores, 2, 1/(d * nobs.factor), FUN = "*")
-    v <- pcobj$loadings
-  }
-  else if (inherits(pcobj, "PCA")) {
-    nobs.factor <- sqrt(nrow(pcobj$call$X))
-    d <- unlist(sqrt(pcobj$eig)[1])
-    u <- sweep(pcobj$ind$coord, 2, 1/(d * nobs.factor), FUN = "*")
-    v <- sweep(pcobj$var$coord, 2, sqrt(pcobj$eig[1:ncol(pcobj$var$coord),
-                                                  1]), FUN = "/")
-  }
-  else if (inherits(pcobj, "lda")) {
-    nobs.factor <- sqrt(pcobj$N)
-    d <- pcobj$svd
-    u <- predict(pcobj)$x/nobs.factor
-    v <- pcobj$scaling
-    d.total <- sum(d^2)
-  }
-  else {
-    stop("Expected a object of class prcomp, princomp, PCA, or lda")
-  }
-  choices <- pmin(choices, ncol(u))
-  df.u <- as.data.frame(sweep(u[, choices], 2, d[choices]^obs.scale,
-                              FUN = "*"))
-  v <- sweep(v, 2, d^var.scale, FUN = "*")
-  df.v <- as.data.frame(v[, choices])
-  names(df.u) <- c("xvar", "yvar")
-  names(df.v) <- names(df.u)
-  if (pc.biplot) {
-    df.u <- df.u * nobs.factor
-  }
-  r <- sqrt(qchisq(circle.prob, df = 2)) * prod(colMeans(df.u^2))^(1/4)
-  v.scale <- rowSums(v^2)
-  df.v <- r * df.v/sqrt(max(v.scale))
-  if (obs.scale == 0) {
-    u.axis.labs <- paste("standardized PC", choices, sep = "")
-  }
-  else {
-    u.axis.labs <- paste("PC", choices, sep = "")
-  }
-  u.axis.labs <- paste(u.axis.labs, sprintf("(%0.1f%% explained var.)",
-                                            100 * pcobj$sdev[choices]^2/sum(pcobj$sdev^2)))
-  if (!is.null(labels)) {
-    df.u$labels <- labels
-  }
-  if (!is.null(groups)) {
-    df.u$groups <- groups
-  }
-  if (varname.abbrev) {
-    df.v$varname <- abbreviate(rownames(v))
-  }
-  else {
-    df.v$varname <- rownames(v)
-  }
-  df.v$angle <- with(df.v, (180/pi) * atan(yvar/xvar))
-  df.v$hjust = with(df.v, (1 - varname.adjust * sign(xvar))/2)
-  g <- ggplot(data = df.u, aes(x = xvar, y = yvar)) + xlab(u.axis.labs[1]) +
-    ylab(u.axis.labs[2]) + coord_equal()
-  if (var.axes) {
-    if (circle) {
-      theta <- c(seq(-pi, pi, length = 50), seq(pi, -pi,
-                                                length = 50))
-      circle <- data.frame(xvar = r * cos(theta), yvar = r *
-                             sin(theta))
-      g <- g + geom_path(data = circle, color = muted("white"),
-                         size = 1/2, alpha = 1/3)
-    }
-    g <- g + geom_segment(data = df.v, aes(x = 0, y = 0,
-                                           xend = xvar, yend = yvar), arrow = arrow(length = unit(1/2,
-                                                                                                  "picas")), color = muted("cyan"), size = 3)
-  }
-  if (!is.null(df.u$labels)) {
-    if (!is.null(df.u$groups)) {
-      g <- g + geom_text(aes(label = labels, color = groups),
-                         size = labels.size)
-    }
-    else {
-      g <- g + geom_text(aes(label = labels), size = labels.size)
-    }
-  }
-  else {
-    if (!is.null(df.u$groups)) {
-      g <- g + geom_point(aes(color = groups), alpha = alpha, size = 0.1, colour = "black")
-    }
-    else {
-      g <- g + geom_point(alpha = alpha, size = 0.1, colour = "black")
-    }
-  }
-  if (!is.null(df.u$groups) && ellipse) {
-    theta <- c(seq(-pi, pi, length = 50), seq(pi, -pi, length = 50))
-    circle <- cbind(cos(theta), sin(theta))
-    ell <- ddply(df.u, "groups", function(x) {
-      if (nrow(x) <= 2) {
-        return(NULL)
-      }
-      sigma <- var(cbind(x$xvar, x$yvar))
-      mu <- c(mean(x$xvar), mean(x$yvar))
-      ed <- sqrt(qchisq(ellipse.prob, df = 2))
-      data.frame(sweep(circle %*% chol(sigma) * ed, 2,
-                       mu, FUN = "+"), groups = x$groups[1])
-    })
-    names(ell)[1:2] <- c("xvar", "yvar")
-    g <- g + geom_path(data = ell, aes(color = groups, group = groups))
-  }
-  if (var.axes) {
-    g <- g + geom_text(data = df.v, aes(label = varname,
-                                        x = xvar, y = yvar, angle = angle, hjust = hjust),
-                       color = "cyan", size = varname.size)
-  }
-  g <- g + theme_solarized(light =  F)
-  return(g)
-}
-
-ggbiplot_custom(pca, obs.scale = 1, var.scale = 1,scale = 0.4, size = 0.1,
-         ellipse = TRUE, circle = TRUE, lable.size = 5) +
-  scale_color_discrete(name = '') +
-  theme(legend.direction = 'horizontal', legend.position = 'top') +
-  xlim(-4,4) + ylim(-4,4)
-
-# loadings
-loadings <- pca$loadings
-
-# scores
-
-scores <- pca$scores
-scores <- pca$scores[,1]+ 100
-scores <- data.frame(scores, TRACTCE = pca_data$tract_name2)
-
-#merge with spatial data
-
-
-
-tract_scores <- merge(tracts,scores, by = "TRACTCE",)
-
-county009 <- tract_scores %>%
-  filter(STATEFP=="06") %>%
-  filter(COUNTYFP=="029")
-
-
-#aggregation
-
-mapview(county009, zcol = "scores")
-
-t <- sf::st_join(counties, tract_scores, join = st_intersects, mean)
-
-t <- st_join(counties, tract_scores) %>% 
-  group_by(counties$geometry) %>% 
-  summarise(mean(scores))
-
-data_t = data.table(tract_scores)
-county_scores <- data_t[,mean(scores), by =c("STATEFP","COUNTYFP")]
-
-county_scores <- left_join(counties, county_scores)
-
-mapview(county_scores, zcol="V1", legend = T)
-
-
-
-# raster::shapefile(as(tracts,"Spatial"),"tract.shp")
-# raster::shapefile(as(counties,"Spatial"),"count.shp")
-
+save.image("data.Rdata")
+#load("data.Rdata")
