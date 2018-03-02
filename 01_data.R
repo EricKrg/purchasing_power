@@ -38,39 +38,18 @@ area <- geo.make(state = c(state.west$abb), county = "*",tract = "*")
 #possible (i.e. health insurance, was not provided with a 2016 data set).
 #additionally only table numbers startin with B.* are working with acs.fetch()
 
-#Sex by Age
-B21001 <- acs.fetch(endyear = 2015, span = 5, geography = area,
-                    table.number = "B21001", col.names = "pretty")
-#income x
-B19301 <- acs.fetch(endyear = 2015, span = 5, geography = area,
-                    table.number = "B19301", col.names = "pretty")
-#poverty x
-B17021 <- acs.fetch(endyear = 2015, span = 5, geography = area,
-                    table.number = "B17021", col.names = "pretty")
-#health insurance x
-B27001<- acs.fetch(endyear = 2015, span = 5, geography = area,
-                    table.number = "B27001", col.names = "pretty")
-#earnings x
-B23001 <- acs.fetch(endyear = 2015, span = 5, geography = area,
-                   table.number = "B23001", col.names = "pretty")
-#education x
-B06009 <- acs.fetch(endyear = 2015, span = 5, geography = area,
-                    table.number = "B06009", col.names = "pretty")
-#household size x
-B11016 <- acs.fetch(endyear = 2015, span = 5, geography = area,
-                    table.number = "B11016", col.names = "pretty")
-#family income x
-B19101 <- acs.fetch(endyear = 2015, span = 5, geography = area,
-                    table.number = "B19101", col.names = "pretty")
-# vehicles available x
-B08015 <- acs.fetch(endyear = 2015, span = 5, geography = area,
-                    table.number = "B08015", col.names = "pretty")
-# value of housing x
-B25075 <- acs.fetch(endyear = 2015, span = 5, geography = area,
-                    table.number = "B25075", col.names = "pretty")
-#total pop x
-total <- acs.fetch(endyear = 2015,span= 5, geography = area,
-                          table.number = "B01003", col.names = "pretty")
+#Sex by Age, income, poverty, health insurance, earnings, education, household size,
+#family income, vehicles, value of housing, total pop 
+
+# census_tbl based on factfinder
+census_tbl <- c("B21001","B19301","B17021","B17021","B27001", "B23001", "B06009",
+                "B11016", "B11016", "B19101", "B08015", "B25075", "total")
+
+for (i in census_tbl){
+  print(i)
+  assign(i,acs.fetch(endyear = 2015, span = 5, geography = area,
+            table.number = i, col.names = "pretty"))
+}
 
 # spatial data, downloaded if needed
 find_d <- function(dname){
@@ -172,7 +151,7 @@ all_index[[3]] <- tot_cars
 # Variable 4: Poverty status #############################
 #**********************************************************
 
-richkids <- data.frame(tract_name,B17021e[,22], Total_pop) # above poverty
+richkids <- data.frame(tract_name,B17021e[,c(22,1)], Total_pop) # above poverty
 colnames(richkids) <- c("tract", "non_poverty", "Total")
 # Index
 richkids$index <- index(richkids, "non_poverty")
@@ -183,10 +162,11 @@ all_index[[4]] <- richkids
 #**********************************************************
 
 income <- data.frame(tract_name, B19301e, Total_pop)
-colnames(income) <- c("county", "income","Total")
+colnames(income) <- c("tract", "income","Total")
 
 #index Income
-income$index <- index(income, "income")
+avg <- (sum(income$income, na.rm = T)/16071)
+income$index <- (income$income/avg)
 
 all_index[[5]] <- income
 
@@ -194,8 +174,8 @@ all_index[[5]] <- income
 # Variable 6: Family Income ###############################
 #**********************************************************
 
-high_income <- data.frame(county = tract_name, family_income = apply(B19101e[, c(9:17)],sum, MARGIN = 1),
-                     Total = apply(B19101e[,1:17], sum,MARGIN = 1)) #income over 40.000$
+high_income <- data.frame(county = tract_name, family_income = apply(B19101e[, c(13:17)],sum, MARGIN = 1),
+                     Total = apply(B19101e[,1:17], sum,MARGIN = 1)) #income over 75.000$
 #index family in
 high_income$index <- index(high_income, "family_income")
 
