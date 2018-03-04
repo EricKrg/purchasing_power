@@ -1,0 +1,194 @@
+--- 
+title: "Purchasing power in the US - West Region"
+subtitle: "Supervisor GEO 404: Dr. Jannes Muenchow"
+author: 'Eric Krueger'
+date: '`r Sys.Date()`'
+knit: bookdown::render_book
+site: bookdown::bookdown_site
+documentclass: book
+rmd_files: ["pp_bookdown.Rmd"]
+bibliography: [package.bib]
+biblio-style: apalike
+link-citations: yes
+description: "GEO 404 second assingment"
+output: 
+  bookdown::gitbook:
+  config:
+    toc:
+      collapse: subsection
+      scroll_highlight: yes
+      before: null
+      after: null
+    toolbar:
+      position: fixed
+    edit : null
+    download: 
+      -  ["book.PDF","PDF"]
+      #-  ["book.html", "HTML"]
+    search: yes
+    fontsettings:
+      theme: white
+      family: sans
+      size: 2
+---
+
+# Introduction 
+
+<style>
+body {
+text-align: justify}
+</style>
+
+```{r "setup", include=FALSE}
+require("knitr")
+require("kableExtra")
+pacman::p_load(DT)
+opts_knit$set(root.dir = "C:/Users/Eric/Documents/purchasing_power/purchasing_power")
+```
+```{r Data, include=FALSE}
+pacman::p_load(tidyverse, sf, sp, acs, mapview, tigris, data.table, ggbiplot)
+dir_main <- "."
+```
+
+
+The calculation of indices, as well as the condensation of a set of indices,in order to represent purchasing power of individuals, regions or different society groups has always been a challenging part of market research. The term purchase power is defined as the amount of available money for spending on consumption of goods and services [@bd].Therefore variables like net income, employment, insurance and more are applicable indicators to charcterize purchasing power of different spatial levels (i.e. state, county, tract; [@GFK]. But these indicators alone are not able to estimate purchasing power nor to display purchase motivation. In order to estimate purchase power on different spatial levels the use of census data and the application of statistical methods is unavoidable. One method to handle high dimensional data and condense the content of multiple indicators while preserving the overall variance, is a principle component analysis (PCA). This ordination technique is broadly used in the field of ecology, but also a essential part of an exploratory data analysis (EDA) for any kind of data [@Fielding].
+
+In this study census data, retrieved from the [US Census Bureau](https://factfinder.census.gov/faces/nav/jsf/pages/index.xhtml), was used to calculate the purchasing power on census tract level, using a principal component analysis on a high dimensional data set. The study was limited the the west-region of the USA. Further on the tract level results have been aggregated to display the purchase power per county. 
+  
+# Data and Methods  
+
+<style>
+body {
+text-align: justify}
+</style>
+  
+The following section gives a short overview on the acquired census data and their characteristics, furthermore all applied methods are reported and explained, as well as the applied software packages. 
+  
+As data baseline the data set `states` provided as R-data set from the U.S. Department of Commerce was used to retrive the spatial data on state level. This data set was used to filter the western region of the USA, to provide the the state-codes needed for the queries of the spatial tracts as well as the census data based on county- and tract- level.
+  
+## Data Aquisition  
+  
+The `tigris`- package was used to download the spatial data on county- and tract-level for the western-region of the US. This data was later used to aggregate the tract-level scores as well as to visualize the results of the analysis [@tigris].
+
+The thematic census data was downloaded automatically by querying the US-Census data-base, using the `acs`-package [@Glenn2016b], see code below.
+
+```{r home, include=TRUE, eval=FALSE}
+census_tbl <- c("B23001", "B06009", "B21001","B19301","B17021","B27001",
+                "B11016", "B19101", "B08015", "B25075", "B01003")
+
+for (i in census_tbl){
+  print(i)
+  assign(i,acs.fetch(endyear = 2015, span = 5, geography = area,
+            table.number = i, col.names = "pretty"))
+}
+```
+The querying parameters, covered a time span from 2010 to 2015, as well as a spatial selection of the census levels (counties and tracts) of the western region. The tables were selected using the the census FactFinder, table 1 provides an overview of all retrieved tables as well as the resulting variable used for the index-calculation. A total of 12 variables were acquiered and preprocessed for the principal component analysis.
+
+**Table 1 Census Variables:**  
+
+Table nr.| Content                         | Variable
+---------|---------------------------------|------------------------
+B23001   |Number of Workers by age and sex | Total employed
+B06009   |Educational degree               | Total University degree
+B21001   |Population by Sex and age        | Male or Female; Age Group (18-64)
+B19301   |Total income per tract           | Income
+B17021   |Poverty status per tract         | Total above poverty
+B27001   |Health insurance coverage        | Total pop. with insurance
+B11016   |Family and Non-Family-Housholds  | Total nr. of Families (3 or more Members)
+B19101   |Income per Family                | Family income over 75k $ per year
+B08015   |Number of Cars by Age and Type   | Total nr. of cars per tract
+B25075   |Value of housing                 | Total nr. of Houses with a value over 100k$ 
+B01003   |Total population per tract       | Total population per tract
+
+The 12 selected variables were choosen since they are all indicating a increase or decrease in purchase power. So are the variables income and family income directly related to purchase power [@bd], while other variables indicate wealth (i.e. Value of Housing or Above Poverty). Variables like total employed, number of people with university degree and insurance allow conclusions about the earnings per tract [@GFK]. The variables total number of females, males and total population can be used to group and weight the data in later analysis.  
+
+## Data Preprocessing and Index Calculation
+
+The acs-census-tables were transformed in the `data-table`-fromat using the `data-table`-package [@data.table]. This enables a fast and effecient processing, with acs data sets which covered over 16000 elements. A normalized index was calculated for each variable using the following formula:   
+
+
+$$\frac{(\frac{X_i}{Total_i})}{(\frac{\sum_{i = k}^nX_i}{\sum_{n=k}^nTotal_i}100)}$$
+
+
+Where $X_i$ represents the Value of a variable ($X$) at a given tract ($i$) with $k$ as the number of all tracts, while $Total_i$ represents the total number of $X$ at tract $i$.  
+
+These indices allow to compare the values of each variable and tract on a region wide scale (region west). The index calculation removes the unit from each variable (i.e $) and normalizes the value to the region wide average, by calculating the proportion of the variabel value to the total population of the tract and dividing this value through the average of the region. 
+
+
+## Principle component analysis  
+
+The principle component analysis as a part of a exploratory data analysis, is a important step to understand distributational qualities, underlying structure and important variables of the input data [@Fielding]. The PCA itself reduces the dimensionality of the data set by mapping the original data onto a lower dimensional space, while preserving most of the variance of the original data [@Fielding]. The process of reducing is achieved by transforming the possibly correlated dimensions (variables) of a data set into a smaller set of linearly uncorrelated principal components. A orthogonal transformation is used to transform the observations of the data set and the correlation between the variables to calculate the eigenvectors, where the eigenvector with the highest scores is taken as first principal component [@Fielding]. This reduction of dimensions makes it possible to visualize a data set of originally 12 dimensions with a scatterplot of only two axis, which ease up the process of visual analysis.  
+
+The sign of loadings and scores of the PCA were adjusted if needed (arbitrary negative/positive signs). 
+A biplot was created to display the results of the PCA. Two principal component analysis with different input variables were carried out. The scores of the first principal component were used to represent pruchasing power. The PCA in this study was carried out using the `princomp` function of the `stats`-package [@R]. 
+
+## Smoothing
+
+In order to avoid hard transitions between the counties in the final output product, the purchase power results were smoothed by using a moving window approach on each aggregated value of the counties. This filtering approach allows to create a homogenous output, as well as to erode outliers which produce these unwanted sharp transitions. Therefore the spatial neighbors of each county were retrieved and the mean of the corresponding purchase power values was calculated, including the purchase power value of the selected county (center of the moving window, see code below).    
+
+```{r smooth, include=TRUE, eval=FALSE}
+for(k in 1:nrow(county_scores)){
+  print(k)
+  temp <- st_intersects(county_scores[k,], county_scores)
+  val <- sum(county_scores[temp[[1]],]$V1)/length(temp[[1]])
+  county_scores$V2[k] <- val
+}
+```
+
+This method results in a smoother output map with a tighter range of values and a reduced influence of outliers for a visual analysis.    
+For the spatial operations used in this method the spatial geometry tool `st-intersect` from the `sf`-package was used [@sf]. 
+
+## Software
+
+In this study the open programming language R (Version 3.4.2), was used to conducted the data preperation and the statistical analysis including the principal component analysis [@R]. Further data handling, filtering and aggregating was realized with the software packages `data.table` [@data.table] and `tidyverse` [@tidy]. Spatial data was analyzed, edited and visualized with the use of the packages:`sf` [@sf],`sp` [@sp] and `mapview` [@mapview]. In order to retrive the thematic census data as well as the spatial census levels the packages `tigiris` [@tigris] and `acs` [@Glenn2016b] were loaded. Additionally the package `ggbiplot` [@biplot] was costumized to plot the PCA results.
+
+sf, sp, acs, mapview, tigris, ggbiplot
+
+# Results
+
+<style>
+body {
+text-align: justify}
+</style>
+
+This chapters reports on the results of the principal component analysis, the selection of variables for the final PCA, as well as the results of the produced pruchasing power values, displayed as interactive map. 
+
+## PCA-Results
+  
+Two different principal component analysis were computed, the first one using all 12 variables and the second one using a selection of 8 variables (total employed, total University degree, Income, total above poverty, total insured, total cars, family income and house value; see table 1). The results of the first PCA (12 Variables) returned 37.7% of variance explained by the first principal component and 20.4% of variance explained by the second principal component (see figure 1).Thus the first two principal components of the PCA, using all 12 variables, explains 58.1% of the Variance of the data set. Using the previously mentioned 8 Variables the first principal component of the second PCA explains 54.9% of the variance and the second principal component 16.4% of the variance. So that 71.3% of the variance of the data ist explained by the first and second principal component using the second PCA (see figure 1).   
+
+
+
+```{r plot, include=TRUE, echo=FALSE, warning=FALSE}
+library(ggplot2, gridExtra)
+load("plots.Rdata")
+gridExtra::grid.arrange(biplot2,biplot1,ncol = 2)
+```
+**Figure 1:** PCA 1 (12 Variables) and PCA 1 (8 Variables)
+
+
+## Mapping Results
+
+```{r tract, include=TRUE, echo=FALSE}
+library(mapview)
+load("tract.Rdata")
+mapview(tract_lvl, zcol = "scores", legend = T,
+        at = breaks.raw$brks, col.regions = pal, lwd = 0.2)
+```
+  
+**Figure 2**: Pruchasing power on tract level
+
+
+
+```{r map, include=TRUE, echo=FALSE}
+library(mapview)
+load("maps.Rdata")
+sync(west.raw, west.smooth)
+```
+  
+**Figure 3:** raw (left) and smoothed (right) purchasing power
+  
+# Discussion & Conclusion 
+
+# References
+

@@ -1,7 +1,7 @@
 
-###############################################
+#***********************************************
 #01_Data--------------------------------------
-###############################################
+#***********************************************
 
 #working census key: 73562ee0a098c703e3b06e5341c284a6654d0c1f
 
@@ -30,7 +30,7 @@ state.west<- state %>%
 acs::api.key.install('73562ee0a098c703e3b06e5341c284a6654d0c1f')
 
 # for fetch geography
-area <- geo.make(state = c(state.west$abb), county = "*",tract = "*")
+area <- geo.make(state = c(as.character(state.west$abb)), county = "*",tract = "*")
 
 # Age, Sex, Income (Households), Employment (Class of Worker), Education, Family,
 
@@ -39,11 +39,12 @@ area <- geo.make(state = c(state.west$abb), county = "*",tract = "*")
 #additionally only table numbers startin with B.* are working with acs.fetch()
 
 #Sex by Age, income, poverty, health insurance, earnings, education, household size,
-#family income, vehicles, value of housing, total pop 
+#family income, vehicles, value of housing, total pop
 
 # census_tbl based on factfinder
-census_tbl <- c("B21001","B19301","B17021","B17021","B27001", "B23001", "B06009",
-                "B11016", "B11016", "B19101", "B08015", "B25075", "total")
+
+census_tbl <- c( "B23001", "B06009", "B21001","B19301","B17021","B17021","B27001",
+                 "B11016", "B19101", "B08015", "B25075","B01003")
 
 for (i in census_tbl){
   print(i)
@@ -61,10 +62,10 @@ find_d <- function(dname){
   }
 }
 if (find_d("counties") && find_d("states")==F){
-  counties <- counties(state.west$abb)
+  counties <- counties(as.character(state.west$abb))
   n = 1
   tract_list <- list()
-  for (j in state.west$abb){
+  for (j in as.character(state.west$abb)){
     tract_list[[n]] <- tracts(state = j, cb = TRUE)
     n = n +1
   }
@@ -81,8 +82,9 @@ if (find_d("counties") && find_d("states")==F){
 
 tract_name <- rownames(estimate(B21001))
 tract_name2 <- B21001@geography$tract
-c_name <- B21001@geography$NAME
-Total_pop <- as.data.table(estimate(total))
+c_name <- gsub(pattern = "[A-z].*?,[[:space:]]","",B21001@geography$NAME)
+state_id <- as.character(B21001@geography$state)
+Total_pop <- as.data.table(estimate(B01003))
 
 for (i in grep("B.*[0-9]$", ls(),value = T)){
   print(i)
@@ -99,7 +101,6 @@ index <- function(df, dftarget){
   avg <-(sum(dftarget, na.rm = T))/(sum(Total, na.rm = T))
   return(((dftarget/Total)/avg*100))
 }
-
 
 all_index <- list()
 #**********************************************************
@@ -268,10 +269,12 @@ for (i in all_index){
     index_list[[j]] <- tract_name
     index_list[[j+1]] <- tract_name2
     index_list[[j+2]] <- c_name
+    index_list[[j+3]] <- state_id
     pca_data <- do.call(cbind, index_list)
     colnames(pca_data)[j] <- "tract_name"
     colnames(pca_data)[j+1] <- "tract_name2"
     colnames(pca_data)[j+2] <- "c_name"
+    colnames(pca_data)[j+3] <- "state_id"
     colnames(pca_data)[5] <- "income"
 
     pca_data <- pca_data[complete.cases(pca_data),]
@@ -283,4 +286,5 @@ for (i in all_index){
 #************************************
 saveRDS(pca_data,file = "./pca_data.Rds")
 save.image("data.Rdata")
-#load("data.Rdata")
+load("data.Rdata")
+

@@ -1,19 +1,28 @@
 #**************************************
 #02 PCA, Smoothing and Visual---------
 #**************************************
+
+pacman::p_load(tidyverse, sf, sp, acs, mapview, tigris, data.table, ggbiplot)
+
 #load data
 pca_data <- readRDS("pca_data.Rds")
+colnames(pca_data)[1] <- "employed"
+colnames(pca_data)[9] <- "University"
 load("data.Rdata")
 #********************************************************
 # PCA
 #********************************************************
 set.seed(123)
 pca <- princomp(pca_data[,c(1:7,9)], cor = TRUE, scores = T) #
-pca <- princomp(pca_data[,c(1:7)], cor = TRUE, scores = T) # final vers
+pca2 <- princomp(pca_data[,c(1:12)], cor = TRUE, scores = T) # final vers
 #change sign for both loading and score to get positive purchase power
 # optional:
 pca$loadings <- (pca$loadings*-1)
 pca$scores <- (pca$scores*-1)
+
+pca2$loadings <- (pca2$loadings*-1)
+pca2$scores <- (pca2$scores*-1)
+
 summary(pca)
 
 # plot ggbiplot - needed adjustment of the default function
@@ -150,58 +159,70 @@ ggbiplot_custom <- function (pcobj, size ,choices = 1:2, scale = 1, pc.biplot = 
   g <- g + theme_solarized(light =  F)
   return(g)
 }
-ggbiplot_custom(pca, obs.scale = 1, var.scale = 1,scale = 0.4, size = 0.1,
+
+
+biplot1 <- ggbiplot_custom(pca, obs.scale = 1, var.scale = 1,scale = 0.4, size = 0.1,
                 ellipse = TRUE, circle = TRUE, lable.size = 5) +
   scale_color_discrete(name = '') +
   theme(legend.direction = 'horizontal', legend.position = 'top') +
   xlim(-8,8) + ylim(-8,8)
 
+biplot2 <- ggbiplot_custom(pca2, obs.scale = 1, var.scale = 1,scale = 0.4, size = 0.1,
+                ellipse = TRUE, circle = TRUE, lable.size = 5) +
+  scale_color_discrete(name = '') +
+  theme(legend.direction = 'horizontal', legend.position = 'top') +
+  xlim(-8,8) + ylim(-8,8)
+save(biplot1,biplot2, file = "plots.Rdata")
+gridExtra::grid.arrange(biplot1,biplot2,ncol = 2)
 # scores of purchasing power
 scores <- abs(pca$scores)
 scores <- pca$scores[,1] + 100
-scores <- data.frame(scores, TRACTCE = pca_data$tract_name2)
+scores <- data.frame(scores, TRACTCE = as.character(pca_data$tract_name2),
+                     name = as.factor(pca_data$c_name),state_id = as.factor(pca_data$state_id))
 #*************************************
 #aggregation #########################
 #*************************************
-tract_scores <- merge(tracts,scores, by = "TRACTCE")
+tracts$state_id <- as.factor(gsub("^0","",tracts$STATEFP))
+tract_scores <- left_join(tracts,scores, by = c("TRACTCE", "state_id"))
 
 data_t <- data.table(tract_scores)
 county_scores <- data_t[,mean(scores,na.rm = T), by =c("STATEFP","COUNTYFP")] # aggregation with data table
 county_scores <- left_join(counties, county_scores)
-county_scores[is.na(county_scores$V1),]$V1 <- mean(county_scores$V1, na.rm = T)
+#county_scores[is.na(county_scores$V1),]$V1 <- mean(county_scores$V1, na.rm = T)
 
 #***************************************
 #Visual-Raw#############################
 #***************************************
+mapviewOptions(vector.palette = viridisLite::viridis(256,option = "D"))
+#mapviewOptions(vector.palette = viridisLite::(256))
 
 #colors and breaks
-pal <- rev(RColorBrewer::brewer.pal(n = 7, name="RdYlBu"))
-brks.raw <-classInt::classIntervals(county_scores$V1, n = 6,
+pal <- rev(RColorBrewer::brewer.pal(n = 10, name="RdYlBu"))
+breaks.raw <-classInt::classIntervals(county_scores$V1, n = 6,
                                       style = "pretty",intervalClosure = "left")
 # one tract
 tract_lvl<- tract_scores %>%
   filter(STATEFP == "06") %>%
-  filter(COUNTYFP == "053")
-mapview(tract_lvl, zcol = "scores", legend = T)
+  filter(COUNTYFP == "041")
+save(tract_lvl,breaks.raw,pal, file = "tract.Rdata")
+
+mapview(tract_lvl, zcol = "scores", legend = T,
+        at = breaks.raw$brks, col.regions = pal, lwd = 0.2)
 # State California with all Counties
 
 county_scores %>%
   filter(STATEFP == "06") %>%
-  mapview(zcol = "V1", legend = T,at = breaks.raw$brks, col.regions = pal,
-          map.types = c("CartoDB.Positron"))
+  mapview(zcol = "V1", legend = T,map.types = c("CartoDB.Positron"))
 
-west.raw <- county_scores %>%
-  filter(STATEFP != "15") %>% #exclude hawii and alska for visualization
-  filter(STATEFP != "02") %>%
-  mapview(zcol = "V1", legend = T,map.types = c("CartoDB.Positron"), zoom = 5)
+west.raw <- west %>%
+  mapview(zcol = "V1", legend = T,map.types = c("CartoDB.Positron"), zoom = 5,
+           at = breaks.raw$brks, col.regions = pal, lwd = 0.2)
 
 west <- county_scores %>%
   filter(STATEFP != "15") %>% #exclude hawii and alska for visualization
-  filter(STATEFP != "02") 
-  
+  filter(STATEFP != "02")
 
-#pal <- c("#bdd7e7","#ffeda0","#fe9929","#cc4c02")
-raw <- spplot(as(west, "Spatial"),  zcol="V1", at = brks.raw$brks, col.regions = pal)
+raw <- spplot(as(west, "Spatial"),  zcol="V1", at = , col.regions = pal)
 
 
 #***********************************************
@@ -215,7 +236,6 @@ for(k in 1:nrow(county_scores)){
   county_scores$V2[k] <- val
 }
 
-county_scores[county_scores$V2 > 99 & county_scores$V2 < 100,]
 county_scores$V3 <- round(county_scores$V2,digits = 1)
 
 
@@ -224,7 +244,7 @@ county_scores$V3 <- round(county_scores$V2,digits = 1)
 # Visual-Smooth#######################
 #*************************************
 pal <- rev(RColorBrewer::brewer.pal(n = 9, name="RdYlBu"))
-breaks.smooth <-classInt::classIntervals(county_scores$V3, n = 8,
+breaks.smooth <-classInt::classIntervals(county_scores$V3, n = 6,
                                          style = "pretty",intervalClosure = "left")
 # brks.smooth <- quantile(county_scores$V2)
 # brks <- c(98.40938,  98.77851, 98.97680,  99.26162,100, 100.5, 101.24529 )
@@ -243,14 +263,19 @@ county_scores %>%
 # the west-states
 west <- county_scores %>%
   filter(STATEFP != "15") %>% #exclude hawii and alska for visualization
-  filter(STATEFP != "02")  
+  filter(STATEFP != "02")
 
-mapviewOptions(vector.palette = viridisLite::viridis(256,option = "D"))
-mapviewOptions(vector.palette = viridisLite::inferno(256))
+
+west <- rmapshaper::ms_simplify(west, keep = 0.01,
+                        keep_shapes = TRUE)
+
 west.smooth <- west %>%
-  mapview(zcol = "V3", legend = T,map.types = c("CartoDB.Positron"), zoom = 5)
+  mapview(zcol = "V3", legend = T,map.types = c("CartoDB.Positron"), zoom = 5,
+          at = breaks.smooth$brks, col.regions = pal, lwd = 0.2, layercontrol = F)
 
-smooth <- spplot(as(west, "Spatial"),  zcol="V3", at = brks, col.regions = pal)
+smooth <- spplot(as(west, "Spatial"),  zcol="V3", at = breaks.smooth$brks , col.regions = pal)
+
+save(west.raw,west.smooth, file = "maps.Rdata")
 
 # raster::shapefile(as(tracts,"Spatial"),"tract.shp")
 # raster::shapefile(as(counties,"Spatial"),"count.shp")
