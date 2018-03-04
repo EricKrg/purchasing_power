@@ -42,12 +42,11 @@ text-align: justify}
 ```{r "setup", include=FALSE}
 require("knitr")
 require("kableExtra")
-pacman::p_load(DT)
-opts_knit$set(root.dir = "C:/Users/Eric/Documents/purchasing_power/purchasing_power")
+# pacman::p_load(DT)
+# opts_knit$set(root.dir = "C:/Users/Eric/Documents/purchasing_power/purchasing_power")
 ```
 ```{r Data, include=FALSE}
 pacman::p_load(tidyverse, sf, sp, acs, mapview, tigris, data.table, ggbiplot)
-dir_main <- "."
 ```
 
 
@@ -120,7 +119,7 @@ These indices allow to compare the values of each variable and tract on a region
 The principle component analysis as a part of a exploratory data analysis, is a important step to understand distributional qualities, underlying structure and important variables of the input data [@Fielding]. The PCA itself reduces the dimensional of the data set by mapping the original data onto a lower dimensional space, while preserving most of the variance of the original data [@Fielding]. The process of reducing is achieved by transforming the possibly correlated dimensions (variables) of a data set into a smaller set of linearly uncorrelated principal components. A orthogonal transformation is used to transform the observations of the data set and the correlation between the variables to calculate the eigenvectors, where the eigenvector with the highest scores is taken as first principal component [@Fielding]. This reduction of dimensions makes it possible to visualize a data set of originally 12 dimensions with a scatter plot of only two axis, which ease up the process of visual analysis.  
 
 The sign of loadings and scores of the PCA were adjusted if needed (arbitrary negative/positive signs). 
-A biplot was created to display the results of the PCA. Two principal component analysis with different input variables were carried out. The scores of the first principal component were used to represent purchasing power. The PCA in this study was carried out using the `princomp` function of the `stats`-package [@R]. 
+A biplot was created to display the results of the PCA. Two principal component analysis with different input variables were carried out. The scores of the first principal component were used to represent purchasing power. The PCA in this study was carried out using the `princomp` function of the `stats`-package [@R]. The derived scores from the PCA were used to display purchase power. These scores represented the purchase power on tract-level, therefore these values were aggregated, to the county level, by using the statefp-code und the countyfp-code as identifieres. The aggregated scores were normalized by adding 100 to scores and then combined with the spatial data using the same identifieres as for the aggregation, to enable visualization.
 
 ## Smoothing
 
@@ -155,10 +154,8 @@ This chapters reports on the results of the principal component analysis, the se
 
 ## PCA-Results
   
-Two different principal component analysis were computed, the first one using all 12 variables and the second one using a selection of 8 variables (total employed, total University degree, Income, total above poverty, total insured, total cars, family income and house value; see table 1). The results of the first PCA (12 Variables) returned 37.7% of variance explained by the first principal component and 20.4% of variance explained by the second principal component (see figure 1).Thus the first two principal components of the PCA, using all 12 variables, explains 58.1% of the Variance of the data set. Using the previously mentioned 8 Variables the first principal component of the second PCA explains 54.9% of the variance and the second principal component 16.4% of the variance. So that 71.3% of the variance of the data is explained by the first and second principal component using the second PCA (see figure 1). Since the principal component analysis with 8 Variables explained over 10% more variance of the data, the scores of this PCA, were used for all further steps. 
-Looking at the results of the PCA, displayed in a biplot (see figure 1, black dots = tracts), it could be recognized that all variables influence the first principal component positively (x-axis). Beside the positive influence of all variables to the first component, it was found that the variables total employed and total cars also influence the second principal component positively, while the other variables influence these negatively. The biplot of the used PCA (PCA-2), showed also that the variables cars and total employed, non-poverty and total insured as well as the variables income and non-poverty are correlated, while the  other variables  
-
-
+Two different principal component analysis were computed, the first one using all 12 variables and the second one using a selection of 8 variables (total employed, total University degree, Income, total above poverty, total insured, total cars, family income and house value; see table 1). The results of the first PCA (12 Variables) returned 37.7% of variance explained by the first principal component and 20.4% of variance explained by the second principal component (see figure 1).Thus the first two principal components of the PCA, using all 12 variables, explains 58.1% of the Variance of the data set. Using the previously mentioned 8 Variables the first principal component of the second PCA explains 54.9% of the variance and the second principal component 16.4% of the variance. So that 71.3% of the variance of the data is explained by the first and second principal component using the second PCA (see figure 1). Since the principal component analysis with 8 Variables explained over 10% more variance of the data, the scores of this PCA, were used for all further steps. Thus, the scores of the first principal component of the PCA were used to represent the purchase power, while explaining 54.9% of the data set variance.  
+Looking at the results of the PCA, displayed in a biplot (see figure 1, black dots = tracts), it could be recognized that all variables influence the first principal component positively (x-axis). Beside the positive influence of all variables to the first component, it was found that the variables *total employed* and *total cars* also influence the second principal component positively, while the other variables influence these negatively. The biplot of the used PCA (PCA-2), showed also that the variables *cars* and *total employed, non-poverty* and *total insured* as well as the variables *income* and *non-poverty* are correlated, while the other variables did not tend to correlate strongly. Correlation between variables can be found if the angle between them is near 0° or 360°, thus a angel of 90° or 270° displays non-correlated variables, while a angel of 180° represents a complete negative correlation [@biplot].
 
 
 ```{r plot, include=TRUE, echo=FALSE, warning=FALSE}
@@ -171,6 +168,9 @@ gridExtra::grid.arrange(biplot2,biplot1,ncol = 2)
 
 ## Mapping Results
 
+The mapping results show the normalized scores of the first principal component. The range of the purchasing power differs from 95 (purchasing power below average) to 105 (purchasing power over average; see figure 2). It could be found that the values of the tract-level hold a bigger span of values, which is natural because the aggregation erods high and low outliers. Looking at the tract-level example it seems that the purchase power increases if the tract is located in or near a bigger city, while it decreases in lower populated areas. 
+
+
 ```{r tract, include=TRUE, echo=FALSE}
 library(mapview)
 load("tract.Rdata")
@@ -178,8 +178,9 @@ mapview(tract_lvl, zcol = "scores", legend = T,
         at = breaks.raw$brks, col.regions = pal, lwd = 0.2)
 ```
   
-**Figure 2**: Purchasing power on tract level
+**Figure 2**: Purchasing power on one tract level (as example for others)
 
+Looking at the region wide purchase power this effect could be confirmed. The highest purchase power values are found near bigger cities (San Fransisco, Denver, Salt Lake City and Seattle), with its absolute maximum in San Faransico (102-104, see figure 3). Purchase power values below average could be found in New Mexico, Arizona and in the northern parts of Montana. The maps also show that in the most parts of ther western region the purchase power gathers around 99.5 to 100.5. The first purchase power map, with the raw values displays very heterogen patterns with sharp transitions, in example very low values in Arizona (95) and high values in San Fransisco (103) and Denver (102). In contrast the second map shows a more homogenous zones of purchase power values without sharp transitions. The smoothing causes another eroding of the value range (97-101.5) as well as a reduced influence of outliers to the final product.
 
 
 ```{r map, include=TRUE, echo=FALSE}
