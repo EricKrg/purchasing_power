@@ -14,8 +14,8 @@ load("data.Rdata")
 # PCA
 #********************************************************
 set.seed(123)
-pca <- princomp(pca_data[,c(1:7,9)], cor = TRUE, scores = T) #
-pca2 <- princomp(pca_data[,c(1:12)], cor = TRUE, scores = T) # final vers
+pca <- princomp(pca_data[,c(1:7,9)], cor = TRUE, scores = T) # final vers
+pca2 <- princomp(pca_data[,c(1:12)], cor = TRUE, scores = T) # all
 #change sign for both loading and score to get positive purchase power
 # optional:
 pca$loadings <- (pca$loadings*-1)
@@ -175,6 +175,8 @@ biplot2 <- ggbiplot_custom(pca2, obs.scale = 1, var.scale = 1,scale = 0.4, size 
   xlim(-8,8) + ylim(-8,8)
 save(biplot1,biplot2, file = "plots.Rdata")
 gridExtra::grid.arrange(biplot1,biplot2,ncol = 2)
+
+
 # scores of purchasing power
 scores <- abs(pca$scores)
 scores <- pca$scores[,1] + 100
@@ -259,9 +261,7 @@ county_scores$pp_smooth <- round(county_scores$V2,digits = 1)
 pal <- rev(RColorBrewer::brewer.pal(n = 9, name="RdYlBu"))
 breaks.smooth <-classInt::classIntervals(county_scores$pp_smooth, n = 6,
                                          style = "pretty",intervalClosure = "left")
-# brks.smooth <- quantile(county_scores$V2)
-# brks <- c(98.40938,  98.77851, 98.97680,  99.26162,100, 100.5, 101.24529 )
-# pal <- c("#2171b5","#6baed6","#bdd7e7","#ffffb2","#ffeda0","#fe9929","#cc4c02")
+
 # one state
 
 county_scores %>%

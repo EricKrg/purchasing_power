@@ -51,9 +51,9 @@ pacman::p_load(tidyverse, sf, sp, acs, mapview, tigris, data.table, ggbiplot)
 ```
 
 
-The calculation of indices, as well as the condensation of a set of indices,in order to represent purchasing power of individuals, regions or different society groups has always been a challenging part of market research. The term purchase power is defined as the amount of available money for spending on consumption of goods and services [@bd].Therefore variables like net income, employment, insurance and more are applicable indicators to characterize purchasing power of different spatial levels (i.e. state, county, tract; [@GFK]. But these indicators alone are not able to estimate purchasing power nor to display purchase motivation. In order to estimate purchase power on different spatial levels the use of census data and the application of statistical methods is unavoidable. One method to handle high dimensional data and condense the content of multiple indicators while preserving the overall variance, is a principle component analysis (PCA). This ordination technique is broadly used in the field of ecology, but also a essential part of an exploratory data analysis (EDA) for any kind of data [@Fielding].
+The calculation of indices, as well as the condensation of a set of indices,in order to represent purchasing power of individuals, regions or different society groups has always been a challenging part of market research. The term purchase power is defined as the amount of available money for spending on consumption of goods and services [@bd]. Therefore variables like net income, employment, insurance and more are applicable indicators to characterize purchasing power of different spatial levels (i.e. state, county, tract; [@GFK]. But these indicators alone are not able to estimate purchasing power nor to display purchase motivation. In order to estimate purchase power on different spatial levels the use of census data and the application of statistical methods is unavoidable. One method to handle high dimensional data and condense the content of multiple indicators while preserving the overall variance, is a principle component analysis (PCA). This ordination technique is broadly used in the field of ecology, but also a essential part of an exploratory data analysis (EDA) for any kind of data [@Fielding].
 
-In this study census data, retrieved from the [US Census Bureau](https://factfinder.census.gov/faces/nav/jsf/pages/index.xhtml), was used to calculate the purchasing power on census tract level, using a principal component analysis on a high dimensional data set. The study was limited the the west-region of the USA. Further on the tract level results have been aggregated to display the purchase power per county. 
+In this study census data, retrieved from the [US Census Bureau](https://factfinder.census.gov/faces/nav/jsf/pages/index.xhtml), was used to calculate the purchasing power on census tract level, using a principal component analysis on a high dimensional data set. Furthermore it was investigated, if the PCA produced feasible purchase power values on different sptaial levels as well as which variables are the most meaningful to do so. The study was limited the the west-region of the USA. Further on the tract level results have been aggregated to display the purchase power per county. 
   
 # Data and Methods  
 
@@ -86,7 +86,7 @@ The querying parameters, covered a time span from 2010 to 2015, as well as a spa
 
 
 
-**Table 1 Census Variables:** 
+**Table 1 Census Variables:**   <a name="table"></a>
 
 Table nr.| Content                         | Variable
 ---------|---------------------------------|------------------------
@@ -102,7 +102,7 @@ B08015   |Number of Cars by Age and Type   | Total nr. of cars per tract
 B25075   |Value of housing                 | Total nr. of Houses with a value over 100k$ 
 B01003   |Total population per tract       | Total population per tract
   
-<a name="table"></a>
+
 
   
 The 12 selected variables were choosen since they are all indicating a increase or decrease in purchase power. So are the variables income and family income directly related to purchase power [@bd], while other variables indicate wealth (i.e. Value of Housing or Above Poverty). Variables like total employed, number of people with university degree and insurance allow conclusions about the earnings per tract [@GFK]. The variables total number of females, males and total population can be used to group and weight the data in later analysis.  
@@ -160,11 +160,11 @@ This chapters reports on the results of the principal component analysis, the se
 
 ## PCA-Results
   
-Two different principal component analysis were computed, the first one using all 12 variables and the second one using a selection of 8 variables (total employed, total University degree, Income, total above poverty, total insured, total cars, family income and house value; see [table 1](#Table1)). The results of the first PCA (12 Variables) returned 37.7% of variance explained by the first principal component and 20.4% of variance explained by the second principal component (see figure \@ref(fig:biplot)).Thus the first two principal components of the PCA, using all 12 variables, explains 58.1% of the Variance of the data set. Using the previously mentioned 8 Variables the first principal component of the second PCA explains 54.9% of the variance and the second principal component 16.4% of the variance. So that 71.3% of the variance of the data is explained by the first and second principal component using the second PCA (see figure \@ref(fig:biplot)). Since the principal component analysis with 8 Variables explained over 10% more variance of the data, the scores of this PCA, were used for all further steps. Thus, the scores of the first principal component of the PCA were used to represent the purchase power, while explaining 54.9% of the data set variance.  
+Two different principal component analysis were computed, the first one using all 12 variables and the second one using a selection of 8 variables (total employed, total University degree, Income, total above poverty, total insured, total cars, family income and house value; see [table 1](#table)). The results of the first PCA (12 Variables) returned 37.7% of variance explained by the first principal component and 20.4% of variance explained by the second principal component (see figure \@ref(fig:biplot)).Thus the first two principal components of the PCA, using all 12 variables, explains 58.1% of the Variance of the data set. Using the previously mentioned 8 Variables the first principal component of the second PCA explains 54.9% of the variance and the second principal component 16.4% of the variance. So that 71.3% of the variance of the data is explained by the first and second principal component using the second PCA (see figure \@ref(fig:biplot)). Since the principal component analysis with 8 Variables explained over 10% more variance of the data, the scores of this PCA, were used for all further steps. Thus, the scores of the first principal component of the PCA were used to represent the purchase power, while explaining 54.9% of the data set variance.  
 Looking at the results of the PCA, displayed in a biplot (see figure \@ref(fig:biplot), it could be recognized that all variables influence the first principal component positively (x-axis). Beside the positive influence of all variables to the first component, it was found that the variables *total employed* and *total cars* also influence the second principal component positively, while the other variables influence these negatively. The biplot of the used PCA (PCA-2), showed also that the variables *cars* and *total employed, non-poverty* and *total insured* as well as the variables *income* and *non-poverty* are correlated, while the other variables did not tend to correlate strongly. Correlation between variables can be found if the angle between them is near 0° or 360°, thus a angel of 90° or 270° displays non-correlated variables, while a angel of 180° represents a complete negative correlation [@biplot].
 
 
-```{r biplot, include=TRUE, echo=FALSE, warning=FALSE, fig.align = 'left', fig.cap = 'biplot PCA 1 (12 Variables) and PCA 1 (8 Variables)'}
+```{r biplot, include=TRUE, echo=FALSE, warning=FALSE, fig.align = 'left', fig.cap = 'biplot PCA 1 (12 Variables) and PCA 2 (8 Variables)'}
 library(ggplot2, gridExtra)
 load("plots.Rdata")
 gridExtra::grid.arrange(biplot2,biplot1,ncol = 2)
@@ -174,14 +174,14 @@ gridExtra::grid.arrange(biplot2,biplot1,ncol = 2)
 
 ## Mapping Results
 
-The mapping results show the normalized scores of the first principal component. The range of the purchasing power differs from 95 (purchasing power below average) to 105 (purchasing power over average; see [Map 1](#tract). It could be found that the values of the tract-level hold a bigger span of values, which is natural because the aggregation erods high and low outliers. Looking at the tract-level example it seems that the purchase power increases if the tract is located in or near a bigger city, while it decreases in lower populated areas. 
+The mapping results show the normalized scores of the first principal component. The range of the purchasing power values differs from 95 (purchasing power below average) to 105 (purchasing power over average; see [Map 1](#tract). It could be found that the values of the tract-level hold a bigger span of values, which is natural because the aggregation erods high and low outliers. Looking at the tract-level example it seems that the purchase power increases if the tract is located in or near a bigger city, while it decreases in lower populated areas. 
 
 <a name="tract"></a>
 ```{r tract, include=TRUE, echo=FALSE,fig.align = 'center', fig.cap=''}
 library(mapview)
 load("tract.Rdata")
 mapview(tract_lvl, zcol = "scores", legend = T,
-        at = c(breaks.raw$brks,105), col.regions = pal, lwd = 0.2)
+        at = c(breaks.raw$brks,105), col.regions = pal, lwd = 0.2, layer.name = "purchase power")
 ```
 
 Map 1: Purchasing power on one tract level (as example for others)
@@ -192,13 +192,29 @@ Looking at the region wide purchase power this effect could be confirmed. The hi
 ```{r map, include=TRUE, echo=FALSE}
 library(mapview)
 load("maps.Rdata")
-sync(west.raw, west.smooth)
+m1 <- mapview(, layer.name = "purchase power")
+m2 <- mapview(west.smooth, layer.name = "purchase power")
+sync(west.raw,west.smooth)
 ```
 
 Map 2: raw (left) and smoothed (right) purchasing power.
 
   
 # Discussion & Conclusion 
+
+<style>
+body {
+text-align: justify}
+</style>
+
+The highest purchase power values were found in San Fransisco, Denver and Salt Lake City, while other counties which also happen to be located near bigger cities (i.e. Albuquerque or Las Vegas) scored substantially lower values . If we compare the produced purchase power map with the [poverty estimates](https://www.census.gov/data-tools/demo/saipe/saipe.html?s_appName=saipe&map_yearSelector=2016&map_geoSelector=aa_c) by the United States census Bureau, a similar pattern can be found [@CENSUS]. Explaining the higher purchase power estimates with a poverty estimate of less then 10% in San Fransisco, Denver and Salt Lake City and a low purchase power with a poverty estimate of more then 18% in parts of New Mexico, Arizona and Nevada [@CENSUS]. This leaves still out why the counties near Seattle and Los Angeles returned only an average score of 100. Looking at the [median Houshold income](https://www.census.gov/data-tools/demo/saipe/saipe.html?s_appName=saipe&map_yearSelector=2016&map_geoSelector=mhi_c&s_measures=mhi_snc) and the Census [population density estimates](https://www2.census.gov/geo/pdfs/maps-data/maps/thematic/us_popdensity_2010map.pdf) it could be found that the counties around Los Angeles have a higher population density and a lower median household income compared to San Fransisco which confirms the purchase power value for these regions [@CENSUS]. As a another finding, it was identified that San Fransisco and its neighboring counties marks a extrem center of Workforce, Education and Tourism, i.e. it holds the highest number of [college degrees](http://sfced.org/why-san-francisco/facts-figures/workforce-education/) per square mile in the whole USA [@SFCE]. Taking that into comparision, it could be found that there is a much smaller concentration of high houshold income and population in Seattle and its neighboring counties, and more of an equal distribution to Seattle and its surrounding counties could be found [@Seattle]. In the parts with a high purchase power of Utah, Colorada and Wyoming, an equal distribution of high income, moderate population density, high number of cars per person as well as  a high rate of employment is found, which confirms the values produced by the analysis [@Labor].  
+As the previous section refelcts, the selection of variables is a crucial point for the analysis of purchase power. With no doubt the variable income is the most important variabel for the estimation of purchase power [@GFK]. The combination of the variables: *income, family-income, total employed, total cars, total ensured, house value, College degree and non-poverty* were found to give a feasible charecterization of pruchase power per tract. All these variables influenced the first principal component positvely, while the excluded variables: *Sex (male and female), age and family* did not influence the first principle component substantially. The conventional use of the selected variables, approved by previous studies [@GFK], and the postive influence to the frist principle component, justifies the use of these variables, as well as the selection of the first principle component for retrieving the pruchase power values, due to the higher precentage of explained variance (54.9%) compared to the second principal component (16.4%).  
+Besides the selection of the right variables in thematic perspective, the selection of the right index, in order to normalize the individual data is essential to create comparable PCA results [@PCA]. The index used in this study is normalizing the individual tract proportion to the region wide average of this variable. Another way of index calculation could be the individual distance of each tract value to the median or mean of all tracts for this variable. Comparing these indices both could be influenced by outliers, but due to the normalization of the index used in this study, the influence of outliers is minimized.
+Considering the approach of aggregating and smoothing the final product of pruchase power, it is natural that the orginal purchase power results are eroded and some of the variance of the calculated pruchase power results is lost in these steps. 
+The Upscaling (spatial aggregation) of the used data gives insights about particualar groups within the data (counties), by selecting a statistical measure (mean, meadian, min, max), thus the comparision of different aggregation measures could be a next step [@scale]. The smoothing produces a more homogen result, by creating zones and groups of purchase power  with a similar values. Aggregating and smoothing returns a final product which is less prone to outliers, with feasible purchase power results [@scale]. In logical consequencedifferent filtering and aggregating measures should be tested.  
+  
+This study showed that a principle component analysis of a high dimensional data set containing census data on different spatial levels returned feasible purchasing power values. It was found that the selection of variables, which characterize purchase-behavior, -motviation and -potential as well as the selection of a meaningful index for each variable, is essential for the outcome of the analysis. The application of aggregation and smoothing techniques minimized the influence of outliers to the final product. Future steps for this study could be the extraction of more variables, the calculation of purchase power for individual products (i.e. cars) as well as the development of a downscaling approach in contrast to the upscaling used in this study. 
+
 
 # References
 
