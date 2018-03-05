@@ -13,6 +13,7 @@ link-citations: yes
 description: "GEO 404 second assingment"
 output: 
   bookdown::gitbook:
+    fig_caption: yes
   config:
     toc:
       collapse: subsection
@@ -81,9 +82,11 @@ for (i in census_tbl){
             table.number = i, col.names = "pretty"))
 }
 ```
-The querying parameters, covered a time span from 2010 to 2015, as well as a spatial selection of the census levels (counties and tracts) of the western region. The tables were selected using the the census Fact Finder, table 1 provides an overview of all retrieved tables as well as the resulting variable used for the index-calculation. A total of 12 variables were acquired and pre-processed for the principal component analysis.
+The querying parameters, covered a time span from 2010 to 2015, as well as a spatial selection of the census levels (counties and tracts) of the western region. The tables were selected using the the census Fact Finder, [table 1](#table) provides an overview of all retrieved tables as well as the resulting variable used for the index-calculation. A total of 12 variables were acquired and pre-processed for the principal component analysis.
 
-**Table 1 Census Variables:**  
+
+
+**Table 1 Census Variables:** 
 
 Table nr.| Content                         | Variable
 ---------|---------------------------------|------------------------
@@ -93,12 +96,15 @@ B21001   |Population by Sex and age        | Male or Female; Age Group (18-64)
 B19301   |Total income per tract           | Income
 B17021   |Poverty status per tract         | Total above poverty
 B27001   |Health insurance coverage        | Total pop. with insurance
-B11016   |Family and Non-Family-Households  | Total nr. of Families (3 or more Members)
+B11016   |Family and Non-Family-Households | Total nr. of Families (3 or more Members)
 B19101   |Income per Family                | Family income over 75k $ per year
 B08015   |Number of Cars by Age and Type   | Total nr. of cars per tract
 B25075   |Value of housing                 | Total nr. of Houses with a value over 100k$ 
 B01003   |Total population per tract       | Total population per tract
+  
+<a name="table"></a>
 
+  
 The 12 selected variables were choosen since they are all indicating a increase or decrease in purchase power. So are the variables income and family income directly related to purchase power [@bd], while other variables indicate wealth (i.e. Value of Housing or Above Poverty). Variables like total employed, number of people with university degree and insurance allow conclusions about the earnings per tract [@GFK]. The variables total number of females, males and total population can be used to group and weight the data in later analysis.  
 
 ## Data Preprocessing and Index Calculation
@@ -154,42 +160,43 @@ This chapters reports on the results of the principal component analysis, the se
 
 ## PCA-Results
   
-Two different principal component analysis were computed, the first one using all 12 variables and the second one using a selection of 8 variables (total employed, total University degree, Income, total above poverty, total insured, total cars, family income and house value; see table 1). The results of the first PCA (12 Variables) returned 37.7% of variance explained by the first principal component and 20.4% of variance explained by the second principal component (see figure 1).Thus the first two principal components of the PCA, using all 12 variables, explains 58.1% of the Variance of the data set. Using the previously mentioned 8 Variables the first principal component of the second PCA explains 54.9% of the variance and the second principal component 16.4% of the variance. So that 71.3% of the variance of the data is explained by the first and second principal component using the second PCA (see figure 1). Since the principal component analysis with 8 Variables explained over 10% more variance of the data, the scores of this PCA, were used for all further steps. Thus, the scores of the first principal component of the PCA were used to represent the purchase power, while explaining 54.9% of the data set variance.  
-Looking at the results of the PCA, displayed in a biplot (see figure 1, black dots = tracts), it could be recognized that all variables influence the first principal component positively (x-axis). Beside the positive influence of all variables to the first component, it was found that the variables *total employed* and *total cars* also influence the second principal component positively, while the other variables influence these negatively. The biplot of the used PCA (PCA-2), showed also that the variables *cars* and *total employed, non-poverty* and *total insured* as well as the variables *income* and *non-poverty* are correlated, while the other variables did not tend to correlate strongly. Correlation between variables can be found if the angle between them is near 0° or 360°, thus a angel of 90° or 270° displays non-correlated variables, while a angel of 180° represents a complete negative correlation [@biplot].
+Two different principal component analysis were computed, the first one using all 12 variables and the second one using a selection of 8 variables (total employed, total University degree, Income, total above poverty, total insured, total cars, family income and house value; see [table 1](#Table1)). The results of the first PCA (12 Variables) returned 37.7% of variance explained by the first principal component and 20.4% of variance explained by the second principal component (see figure \@ref(fig:biplot)).Thus the first two principal components of the PCA, using all 12 variables, explains 58.1% of the Variance of the data set. Using the previously mentioned 8 Variables the first principal component of the second PCA explains 54.9% of the variance and the second principal component 16.4% of the variance. So that 71.3% of the variance of the data is explained by the first and second principal component using the second PCA (see figure \@ref(fig:biplot)). Since the principal component analysis with 8 Variables explained over 10% more variance of the data, the scores of this PCA, were used for all further steps. Thus, the scores of the first principal component of the PCA were used to represent the purchase power, while explaining 54.9% of the data set variance.  
+Looking at the results of the PCA, displayed in a biplot (see figure \@ref(fig:biplot), it could be recognized that all variables influence the first principal component positively (x-axis). Beside the positive influence of all variables to the first component, it was found that the variables *total employed* and *total cars* also influence the second principal component positively, while the other variables influence these negatively. The biplot of the used PCA (PCA-2), showed also that the variables *cars* and *total employed, non-poverty* and *total insured* as well as the variables *income* and *non-poverty* are correlated, while the other variables did not tend to correlate strongly. Correlation between variables can be found if the angle between them is near 0° or 360°, thus a angel of 90° or 270° displays non-correlated variables, while a angel of 180° represents a complete negative correlation [@biplot].
 
 
-```{r plot, include=TRUE, echo=FALSE, warning=FALSE}
+```{r biplot, include=TRUE, echo=FALSE, warning=FALSE, fig.align = 'left', fig.cap = 'biplot PCA 1 (12 Variables) and PCA 1 (8 Variables)'}
 library(ggplot2, gridExtra)
 load("plots.Rdata")
 gridExtra::grid.arrange(biplot2,biplot1,ncol = 2)
 ```
-**Figure 1:** PCA 1 (12 Variables) and PCA 1 (8 Variables)
+
 
 
 ## Mapping Results
 
-The mapping results show the normalized scores of the first principal component. The range of the purchasing power differs from 95 (purchasing power below average) to 105 (purchasing power over average; see figure 2). It could be found that the values of the tract-level hold a bigger span of values, which is natural because the aggregation erods high and low outliers. Looking at the tract-level example it seems that the purchase power increases if the tract is located in or near a bigger city, while it decreases in lower populated areas. 
+The mapping results show the normalized scores of the first principal component. The range of the purchasing power differs from 95 (purchasing power below average) to 105 (purchasing power over average; see [Map 1](#tract). It could be found that the values of the tract-level hold a bigger span of values, which is natural because the aggregation erods high and low outliers. Looking at the tract-level example it seems that the purchase power increases if the tract is located in or near a bigger city, while it decreases in lower populated areas. 
 
-
-```{r tract, include=TRUE, echo=FALSE}
+<a name="tract"></a>
+```{r tract, include=TRUE, echo=FALSE,fig.align = 'center', fig.cap=''}
 library(mapview)
 load("tract.Rdata")
 mapview(tract_lvl, zcol = "scores", legend = T,
-        at = breaks.raw$brks, col.regions = pal, lwd = 0.2)
+        at = c(breaks.raw$brks,105), col.regions = pal, lwd = 0.2)
 ```
-  
-**Figure 2**: Purchasing power on one tract level (as example for others)
 
-Looking at the region wide purchase power this effect could be confirmed. The highest purchase power values are found near bigger cities (San Fransisco, Denver, Salt Lake City and Seattle), with its absolute maximum in San Faransico (102-104, see figure 3). Purchase power values below average could be found in New Mexico, Arizona and in the northern parts of Montana. The maps also show that in the most parts of ther western region the purchase power gathers around 99.5 to 100.5. The first purchase power map, with the raw values displays very heterogen patterns with sharp transitions, in example very low values in Arizona (95) and high values in San Fransisco (103) and Denver (102). In contrast the second map shows a more homogenous zones of purchase power values without sharp transitions. The smoothing causes another eroding of the value range (97-101.5) as well as a reduced influence of outliers to the final product.
+Map 1: Purchasing power on one tract level (as example for others)
 
+Looking at the region wide purchase power this effect could be confirmed. The highest purchase power values are found near bigger cities (San Fransisco, Denver, Salt Lake City and Seattle), with its absolute maximum in San Faransico (102-104, see [Map 2](#map)). Purchase power values below average could be found in New Mexico, Arizona and in the northern parts of Montana. The maps also show that in the most parts of ther western region the purchase power gathers around 99.5 to 100.5. The first purchase power map, with the raw values displays very heterogen patterns with sharp transitions, in example very low values in Arizona (95) and high values in San Fransisco (103) and Denver (102). In contrast the second map shows a more homogenous zones of purchase power values without sharp transitions. The smoothing causes another eroding of the value range (97-101.5) as well as a reduced influence of outliers to the final product.
 
+<a name="map"></a> 
 ```{r map, include=TRUE, echo=FALSE}
 library(mapview)
 load("maps.Rdata")
 sync(west.raw, west.smooth)
 ```
-  
-**Figure 3:** raw (left) and smoothed (right) purchasing power
+
+Map 2: raw (left) and smoothed (right) purchasing power.
+
   
 # Discussion & Conclusion 
 
