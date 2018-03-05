@@ -1,3 +1,13 @@
+####################################################
+# Applied GIScience
+# Assingment 2
+# GEO 404 FSU Jena
+# Eric Krueger
+# Date: Winter 2017/18
+# Script 1 - Data preperation
+####################################################
+# Purchasing power in the US(West)
+####################################################
 
 #***********************************************
 #01_Data--------------------------------------
@@ -61,7 +71,7 @@ find_d <- function(dname){
     }
   }
 }
-if (find_d("counties") && find_d("states")==F){
+if (find_d("tracts") && find_d("counties")==F){
   counties <- counties(as.character(state.west$abb))
   n = 1
   tract_list <- list()
@@ -73,13 +83,12 @@ if (find_d("counties") && find_d("states")==F){
   counties <- st_as_sf(counties)
   tracts <- st_as_sf(tracts)
 }
-#save.image("data.Rdata")
-#load("data.Rdata")
+#save(tracts,counties,"spatial.Rdata")
+#load("spatial.Rdata")
 
 #****************************
 #thematic data -cleaning#####
 #****************************
-
 tract_name <- rownames(estimate(B21001))
 tract_name2 <- B21001@geography$tract
 c_name <- gsub(pattern = "[A-z].*?,[[:space:]]","",B21001@geography$NAME)
@@ -106,7 +115,6 @@ all_index <- list()
 #**********************************************************
 # Variable 1: Number of workers######################
 #**********************************************************
-
 employed <- B23001e[, .SD, .SDcols =
                        B23001e[, grep("*Employed$", colnames(B23001e))]]
 #tot_employ <- data.frame(tract_name, B23001e[,1], employed)
@@ -117,11 +125,9 @@ colnames(tot_employ)[1:2]<- c("tract","Total")
 tot_employ$index <- index(tot_employ, "Worker")
 
 all_index[[1]] <- tot_employ
-
 #**********************************************************
 # Variable 2: Health Ensurance############################
 #**********************************************************
-
 noEns <- B27001e[, .SD, .SDcols =
                        B27001e[, grep("*No health insurance coverage$", colnames(B27001e))]]
 
@@ -135,11 +141,9 @@ HE$ensurance <- HE$Total - HE$colsum
 HE$indexHE <- index(HE, "ensurance")
 
 all_index[[2]] <- HE
-
 #**********************************************************
 # 3 Variable 3: Number of cars
 #**********************************************************
-
 tot_cars <- data.frame(tract_name, B08015e[,1], Total_pop)
 colnames(tot_cars)<- c("tract","cars","Total")
 
@@ -147,11 +151,9 @@ colnames(tot_cars)<- c("tract","cars","Total")
 tot_cars$index <- index(tot_cars, "cars")
 
 all_index[[3]] <- tot_cars
-
 #**********************************************************
 # Variable 4: Poverty status #############################
 #**********************************************************
-
 richkids <- data.frame(tract_name,B17021e[,c(22,1)], Total_pop) # above poverty
 colnames(richkids) <- c("tract", "non_poverty", "Total")
 # Index
@@ -161,7 +163,6 @@ all_index[[4]] <- richkids
 #**********************************************************
 # Variable 5: Income ######################################
 #**********************************************************
-
 income <- data.frame(tract_name, B19301e, Total_pop)
 colnames(income) <- c("tract", "income","Total")
 
@@ -170,22 +171,18 @@ avg <- (sum(income$income, na.rm = T)/16071)
 income$index <- (income$income/avg)
 
 all_index[[5]] <- income
-
 #**********************************************************
 # Variable 6: Family Income ###############################
 #**********************************************************
-
 high_income <- data.frame(county = tract_name, family_income = apply(B19101e[, c(13:17)],sum, MARGIN = 1),
                      Total = apply(B19101e[,1:17], sum,MARGIN = 1)) #income over 75.000$
 #index family in
 high_income$index <- index(high_income, "family_income")
 
 all_index[[6]] <- high_income
-
 #**********************************************************
 # Variable 7: House value #################################
 #**********************************************************
-
 house_value <- data.frame(county = tract_name,  house_value =apply(B25075e[, c(15:27)],sum, MARGIN = 1),
                           Total = B25075e[,1]) #value over 100k$
 colnames(house_value)[3] <- "Total"
@@ -203,7 +200,6 @@ colnames(family)[2] <- "family"
 family$index <- index(family, "family")
 
 all_index[[8]] <- family
-
 #**********************************************************
 # Variable 9: Education,  degree ##############
 #**********************************************************
@@ -220,11 +216,9 @@ colnames(high_school)[8] <- "bsc"
 high_school$index <- index(high_school, "bsc")
 
 all_index[[9]] <- high_school
-
 #**********************************************************
 # Variable 10 & 11: Sex ##############
 #**********************************************************
-
 male <- data.frame(tract = tract_name, male = B21001e[,4],
                           Total = Total_pop)  # male over 18
 colnames(male)[2] <- "male"
@@ -244,7 +238,6 @@ colnames(female)[3] <- "Total"
 female$index <- index(female, "female")
 
 all_index[[11]] <- female
-
 #**********************************************************
 # Variable 12: Age ##############
 #**********************************************************
@@ -255,7 +248,6 @@ colnames(age)[3] <- "Total"
 age$index <- index(age, "age")
 
 all_index[[12]] <- age
-
 #********************************************************
 # combine all data######################################
 #********************************************************
@@ -280,11 +272,8 @@ for (i in all_index){
     pca_data <- pca_data[complete.cases(pca_data),]
   }
 }
-
 #************************************
 #Saving#############################
 #************************************
 saveRDS(pca_data,file = "./pca_data.Rds")
-save.image("data.Rdata")
-load("data.Rdata")
-
+#save.image("data.Rdata")

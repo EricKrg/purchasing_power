@@ -1,3 +1,14 @@
+####################################################
+# Applied GIScience
+# Assingment 2
+# GEO 404 FSU Jena
+# Eric Krueger
+# Date: Winter 2017/18
+# Script 2 - PCA and visualization
+####################################################
+# Purchasing power in the US(West)
+####################################################
+
 #**************************************
 #02 PCA, Smoothing and Visual---------
 #**************************************
@@ -16,13 +27,14 @@ load("data.Rdata")
 set.seed(123)
 pca <- princomp(pca_data[,c(1:7,9)], cor = TRUE, scores = T) # final vers
 pca2 <- princomp(pca_data[,c(1:12)], cor = TRUE, scores = T) # all
+
 #change sign for both loading and score to get positive purchase power
 # optional:
-pca$loadings <- (pca$loadings*-1)
-pca$scores <- (pca$scores*-1)
-
-pca2$loadings <- (pca2$loadings*-1)
-pca2$scores <- (pca2$scores*-1)
+# pca$loadings <- (pca$loadings*-1)
+# pca$scores <- (pca$scores*-1)
+# 
+# pca2$loadings <- (pca2$loadings*-1)
+# pca2$scores <- (pca2$scores*-1)
 
 summary(pca)
 
@@ -173,6 +185,7 @@ biplot2 <- ggbiplot_custom(pca2, obs.scale = 1, var.scale = 1,scale = 0.4, size 
   scale_color_discrete(name = '') +
   theme(legend.direction = 'horizontal', legend.position = 'top') +
   xlim(-8,8) + ylim(-8,8)
+#save for rmd
 save(biplot1,biplot2, file = "plots.Rdata")
 gridExtra::grid.arrange(biplot1,biplot2,ncol = 2)
 
@@ -195,7 +208,6 @@ county_scores <- left_join(counties, county_scores)
 #***************************************
 #Visual-Raw#############################
 #***************************************
-
 #pre visual
 mapviewOptions(vector.palette = viridisLite::viridis(256,option = "D"))
 colnames(county_scores)[18] <- "pp_raw"
@@ -211,6 +223,7 @@ breaks.raw <-classInt::classIntervals(county_scores$pp_raw, n = 6,
 tract_lvl<- tract_scores %>%
   filter(STATEFP == "06") %>%
   filter(COUNTYFP == "041")
+#save for rmd
 save(tract_lvl,breaks.raw,pal, file = "tract.Rdata")
 
 mapview(tract_lvl, zcol = "scores", legend = T,
@@ -291,7 +304,7 @@ all.smooth <- all.west %>%
 
 #Static
 smooth <- spplot(as(west, "Spatial"),  zcol="V3", at = breaks.smooth$brks , col.regions = pal)
-
+#save for rmd
 save(west.raw,west.smooth, file = "maps.Rdata")
 
 #Saving to shape
