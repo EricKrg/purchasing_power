@@ -21,7 +21,7 @@ ui <- fluidPage(
 
       sidebarPanel(
         sidebarPanel(
-          selectInput('state_id', 'Statefp',unique(county_scores$STATEFP))),
+          selectInput('STATEFP', 'Statefp',unique(county_scores$STATEFP))),
          sliderInput("var",
                      "Number of var:",
                      min = 1,
@@ -32,7 +32,7 @@ ui <- fluidPage(
       # Show a plot of the generated distribution
       mainPanel(
          plotOutput("biplot"),
-         tableOutput('viewData') 
+         tableOutput('table') 
       ),
    leafletOutput
    ("map")
@@ -192,20 +192,23 @@ server <- function(input, output, session) {
     tract_scores <- left_join(tracts,scores, by = c("TRACTCE", "state_id"))
     print("test2")
     data_t <- data.table(tract_scores)
-    county_scores <- data_t[,mean(scores,na.rm = T), by =c("STATEFP","COUNTYFP")] # aggregation with data table
-    county_scores <- left_join(counties, county_scores)
+    shiny_scores <- data_t[,mean(scores,na.rm = T), by =c("STATEFP","COUNTYFP")] # aggregation with data table
+    shiny_scores <- left_join(counties, shiny_scores)
     print("joined")
-    return(county_scores)
+    return(shiny_scores)
   }
 
   #reactives
+  values <- reactiveValues(df = NULL)
+  
+  
   pca <- reactive({
     pca_values(pca_data)
   })
   filtered <- reactive({
-    filtered <- scores_fun(pca_values(pca_data))
-    tab <-as.data.table(subset(filtered, subset = filtered$STATEFP == "06"))
-    return(tab)
+    #filtered <- scores_fun(pca_values(pca_data))
+    values$df <- scores_fun(pca_values(pca_data)) %>%
+      filter(STATEFP == input$STATEFP)
   })
   output$biplot <- renderPlot({
      ggbiplot_custom(pca(), obs.scale = 1, var.scale = 1,scale = 0.4, size = 0.1,
@@ -215,14 +218,29 @@ server <- function(input, output, session) {
       xlim(-8,8) + ylim(-8,8)
   })
   output$map <- renderLeaflet({
-    leaflet() %>% addTiles()
+    leaflet() %>% addTiles() %>% addProviderTiles(providers$Hydda.Base) %>%
+      setView(lng = -100 , lat = 40, zoom = 4) 
   })
+
   observe({
-    leafletProxy("map", data = filtered())
+    breaks.shiny <-classInt::classIntervals(filtered()$V1, n = 6,
+                                          style = "pretty",intervalClosure = "left")
+    pal <- colorNumeric("YlOrRd", domain = breaks.shiny$brks )
+    content <- paste(
+      "<b>","Titel",": ","</b>", filtered()$V1)
+    
+    leafletProxy("map", data = filtered()) %>%
+      clearShapes() %>% addPolygons(highlightOptions = highlightOptions(color = "red", weight = 2,
+                                                                        bringToFront = TRUE),
+                                    fillColor = ~pal(V1),
+                                    color = "white",
+                                    weight = 0.5,
+                                    popup = content)
   })
-  output$viewData <- renderTable({
-   filtered()
-  })
+  output$table <- renderTable(values$df)
+  # output$viewData <- renderTable({
+  #  filtered()
+  # })
   
    # output$distPlot <- renderPlot({
    #    # generate bins based on input$bins from ui.R
