@@ -292,8 +292,10 @@ west <- county_scores %>%
   filter(STATEFP != "15") %>% #exclude hawii and alska for visualization
   filter(STATEFP != "02")
 #simplify layers for visual.
+counties <- rmapshaper::ms_simplify(counties, keep = 0.01,
+                                keep_shapes = TRUE)
 west <- rmapshaper::ms_simplify(west, keep = 0.01,
-                        keep_shapes = TRUE)
+                                keep_shapes = TRUE)
 all.west <- rmapshaper::ms_simplify(county_scores, keep = 0.01,
                                     keep_shapes = TRUE)
 #

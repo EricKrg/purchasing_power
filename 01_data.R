@@ -89,6 +89,9 @@ if (find_d("tracts") && find_d("counties")==F){
 #****************************
 #thematic data -cleaning#####
 #****************************
+
+load("census.Rdata")
+
 tract_name <- rownames(estimate(B21001))
 tract_name2 <- B21001@geography$tract
 c_name <- gsub(pattern = "[A-z].*?,[[:space:]]","",B21001@geography$NAME)
