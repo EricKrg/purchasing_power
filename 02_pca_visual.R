@@ -32,7 +32,7 @@ pca2 <- princomp(pca_data[,c(1:12)], cor = TRUE, scores = T) # all
 # optional:
 # pca$loadings <- (pca$loadings*-1)
 # pca$scores <- (pca$scores*-1)
-# 
+#
 # pca2$loadings <- (pca2$loadings*-1)
 # pca2$scores <- (pca2$scores*-1)
 
@@ -257,15 +257,21 @@ raw <- spplot(as(west, "Spatial"),  zcol="V1", at = , col.regions = pal)
 #***********************************************
 #Smoothing######################################
 #***********************************************
+library(foreach)
+library(doParallel)
+library(doSNOW)
 
-for(k in 1:nrow(county_scores)){
-  print(k)
-  temp <- st_intersects(county_scores[k,], county_scores)
-  val <- sum(county_scores[temp[[1]],]$pp_raw)/length(temp[[1]])
-  county_scores$V2[k] <- val
+cl<-makeCluster(4)
+registerDoSNOW(cl)
+v4 <- foreach(k = 1:nrow(county_scores), .combine = rbind) %dopar% {
+  temp <-sf:: st_intersects(county_scores[k,], county_scores)
+  sum(county_scores[temp[[1]],]$pp_raw)/length(temp[[1]])
 }
+county_scores$v4<- unlist(v4)
+stopCluster(cl)
 
-county_scores$pp_smooth <- round(county_scores$V2,digits = 1)
+#smoothed val
+county_scores$pp_smooth <- round(county_scores$V4,digits = 1)
 
 #*************************************
 # Visual-Smooth#######################
