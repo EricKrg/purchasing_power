@@ -319,3 +319,8 @@ save(west.raw,west.smooth, file = "maps.Rdata")
 # raster::shapefile(as(tracts,"Spatial"),"tract.shp")
 # raster::shapefile(as(counties,"Spatial"),"count.shp")
 # raster::shapefile(as(county_scores, "Spatial), "scores.shp")
+# smp_counties <- rmapshaper::ms_simplify(counties, keep = 0.01,
+#                                 keep_shapes = TRUE)
+# smp_tracts <- rmapshaper::ms_simplify(tracts, keep = 0.01,
+#                                         keep_shapes = TRUE)
+# save(smp_counties, smp_tracts,file = "./purchase_power/shiny_files.Rdata")
