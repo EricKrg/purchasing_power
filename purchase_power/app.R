@@ -6,43 +6,47 @@
 #
 #    http://shiny.rstudio.com/
 #
-
-pacman::p_load(tidyverse, sf, sp, acs, mapview, tigris, data.table, ggbiplot, leaflet)
-
-library(shiny)
+pacman::p_load(tidyverse, sf, sp, acs, mapview, tigris, data.table, ggbiplot, leaflet,
+               shiny, shinycssloaders)
 
 # Define UI for application that draws a histogram
-ui <- fluidPage(
-   
-   # Application title
-   titlePanel("Purchase power"),
-   
-   # Sidebar with a slider input for number of bins 
-
-      sidebarPanel(
-        sidebarPanel(
-          selectInput('STATEFP', 'Statefp',unique(county_scores$STATEFP))),
-         sliderInput("var",
-                     "Number of var:",
-                     min = 1,
-                     max = 12,
-                     value = 30)),
-     
-      
-      # Show a plot of the generated distribution
-      mainPanel(
-         plotOutput("biplot"),
-         tableOutput('table') 
-      ),
-   leafletOutput
-   ("map")
+ui <- bootstrapPage(
+  div(class = "outer",
+  tags$head(
+    # Include our custom CSS
+    includeCSS("style.css")),
+  leafletOutput("map", width ="100%", height = "100%"),
+  absolutePanel(id = "better_panel",
+                      class = "panel panel-default",
+                      width = "auto",
+                      height = 60,
+                      right = "auto",
+                      left =  "auto",
+                      top = 5,
+                      bottom = "auto",
+                      fixed = TRUE,
+                      h3("Purchasing Power in the US (2010-2015)")),
+  absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
+                draggable = TRUE, top = 60, left = "auto" , right = 15, bottom = "auto",
+                width = 330, height = "auto",
+                h3("Control Panel"),
+                selectInput('STATEFP', 'region',c(unique(county_scores$STATEFP), "WEST")),
+                sliderInput("var",
+                            "Number of var:",
+                            min = 1,
+                            max = 12,
+                            value = 30),
+  plotOutput("biplot")
+                )
    )
-   
-
-
+)
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
-  #pca_data <- readRDS("./pca_data.Rds")
+
+  # data required: pca_data, tracts, counties
+  pca_data <- readRDS("./pca_data.Rds")
+  load("./shiny_files.Rdata")
+
   ggbiplot_custom <- function (pcobj, size ,choices = 1:2, scale = 1, pc.biplot = TRUE,
                                obs.scale = 1 - scale, var.scale = scale, groups = NULL,
                                ellipse = FALSE, ellipse.prob = 0.68, labels = NULL, labels.size = 3,
@@ -186,29 +190,43 @@ server <- function(input, output, session) {
     scores <- as.data.frame(in_scores["scores"])[,1] + 100
     scores <- data.frame(scores, TRACTCE = as.character(pca_data$tract_name2),
                          name = as.factor(pca_data$c_name),state_id = as.factor(pca_data$state_id))
-    
+
     tracts$state_id <- as.factor(gsub("^0","",tracts$STATEFP))
-    print("test1")
     tract_scores <- left_join(tracts,scores, by = c("TRACTCE", "state_id"))
-    print("test2")
     data_t <- data.table(tract_scores)
     shiny_scores <- data_t[,mean(scores,na.rm = T), by =c("STATEFP","COUNTYFP")] # aggregation with data table
     shiny_scores <- left_join(counties, shiny_scores)
-    print("joined")
+    rm(data_t,scores)
     return(shiny_scores)
+  }
+  zoom <- function(region){
+    if(region %in% county_scores$STATEFP){
+      return(6)
+  } else {
+    return(4)
+  }
   }
 
   #reactives
   values <- reactiveValues(df = NULL)
-  
-  
+
+
   pca <- reactive({
     pca_values(pca_data)
   })
   filtered <- reactive({
     #filtered <- scores_fun(pca_values(pca_data))
-    values$df <- scores_fun(pca_values(pca_data)) %>%
-      filter(STATEFP == input$STATEFP)
+    if(input$STATEFP %in% county_scores$STATEFP){
+      values$df <- scores_fun(pca_values(pca_data)) %>%
+        filter(STATEFP == input$STATEFP)
+    }
+    else {
+        if(input$STATEFP == "WEST"){
+          values$df <- scores_fun(pca_values(pca_data))
+        }
+    }
+    return(values$df)
+
   })
   output$biplot <- renderPlot({
      ggbiplot_custom(pca(), obs.scale = 1, var.scale = 1,scale = 0.4, size = 0.1,
@@ -218,40 +236,33 @@ server <- function(input, output, session) {
       xlim(-8,8) + ylim(-8,8)
   })
   output$map <- renderLeaflet({
-    leaflet() %>% addTiles() %>% addProviderTiles(providers$Hydda.Base) %>%
-      setView(lng = -100 , lat = 40, zoom = 4) 
+    leaflet(options = leafletOptions(zoomControl = FALSE)) %>% addTiles() %>% addProviderTiles(providers$Hydda.Base) %>%
+      setView(lng = -100 , lat = 40, zoom = 4)
+
   })
 
   observe({
     breaks.shiny <-classInt::classIntervals(filtered()$V1, n = 6,
                                           style = "pretty",intervalClosure = "left")
     pal <- colorNumeric("YlOrRd", domain = breaks.shiny$brks )
-    content <- paste(
-      "<b>","Titel",": ","</b>", filtered()$V1)
-    
-    leafletProxy("map", data = filtered()) %>%
-      clearShapes() %>% addPolygons(highlightOptions = highlightOptions(color = "red", weight = 2,
+    content <- paste0(
+      "<b>","Purchasing Power: ","</b>", format(filtered()$V1,digits = 4))
+
+    withSpinner(leafletProxy("map", data = filtered()) %>%
+      clearShapes() %>% addPolygons(highlightOptions = highlightOptions(color = "white", weight = 3,
                                                                         bringToFront = TRUE),
                                     fillColor = ~pal(V1),
                                     color = "white",
+                                    opacity = 0.5,
+                                    fillOpacity = 0.8,
                                     weight = 0.5,
-                                    popup = content)
+                                    popup = content) %>%
+      setView(lng = mean(sf::st_coordinates(filtered())[,1]) ,
+              lat =mean(sf::st_coordinates(filtered())[,2]) ,
+              zoom = zoom(input$STATEFP)))
   })
-  output$table <- renderTable(values$df)
-  # output$viewData <- renderTable({
-  #  filtered()
-  # })
-  
-   # output$distPlot <- renderPlot({
-   #    # generate bins based on input$bins from ui.R
-   #    x    <- faithful[, 2] 
-   #    bins <- seq(min(x), max(x), length.out = input$bins + 1)
-   #    
-   #    # draw the histogram with the specified number of bins
-   #    hist(x, breaks = bins, col = 'darkgray', border = 'white')
-   # })
 }
 
-# Run the application 
+# Run the application
 shinyApp(ui = ui, server = server)
 
