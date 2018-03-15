@@ -21,26 +21,27 @@ h1, h2, h3, h4 { font-weight: 400; }
 h5{font-size: 9;}
 #controls {
   /* Appearance */
-  background-color: white;
+  background-color: White;
   padding: 0 20px 20px 20px;
   cursor: move;
   overflow-y:scroll;
-  /* Fade out while not hovering */
-  opacity: 0.1;
-  zoom: 0.9;
-  transition: opacity 500ms 1s;
+  max-height:900px;
 }
-#controls:hover {
-  /* Fade in while hovering */
-  opacity: 0.95;
-  transition-delay: 0;
-}
+
+
 
 #better_panel {
   /* Appearance */
   background-color: white;
   padding: 0 20px 20px 20px;
   cursor: move;
+}
+
+#spacer {
+  /* Appearance */
+  background-color: LightGrey;
+  color :Gray;
+
 }
 
 /* Position and style citation */
@@ -50,6 +51,18 @@ h5{font-size: 9;}
   left: 10px;
   font-size: 12px;
 }
+
+.multicol .shiny-options-group{
+                            -webkit-column-count: 3; /* Chrome, Safari, Opera */
+                            -moz-column-count: 3;    /* Firefox */
+                            column-count: 3;
+                            -moz-column-fill: balanced;
+                            -column-fill: balanced;
+                            }
+                            .checkbox{
+                            margin-top: 0px !important;
+                            -webkit-margin-after: 0px !important; 
+                            }
 
 /* If not using map tiles, show a white background */
 .leaflet-container {

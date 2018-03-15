@@ -12,6 +12,7 @@ require(sp)
 require(data.table)
 require(leaflet)
 require(shiny)
+require(shinydashboard)
 #
 #
 # load data
@@ -53,16 +54,19 @@ ui <- navbarPage("Purchasing Power USA", id = "nav",
                       bottom = "auto",
                       fixed = TRUE),
   absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
-                draggable = TRUE, top = 50, left = "auto" , right = 15, bottom = "auto",
+                draggable = FALSE, top = 60, left = "auto" , right = 15, bottom = "auto",
                 width = 440, height = "100%",
                 h3("Control Panel"),
                 selectInput('STATEFP', 'region',c(paste0(unique(county_scores$STATEFP),
                                                          " ",unique(state.west$name)), "WEST")),
-                checkboxGroupInput("variable", "Variables for PCA:",
-                                   c(colnames(pca_data[,1:12]))),
+                tags$div(align = "left",
+                         class = "multicol",
+                         checkboxGroupInput("variable", "PCA Variables",
+                                   c(colnames(pca_data[,1:12])),width = 400)),
   plotOutput("biplot"),
-  h5("Data from 2010-2015")
-                ))),
+  box(title = "Information",status = "warning", solidHeader = TRUE,
+      includeMarkdown("./data/desc.md")
+                )))),
   tabPanel("Data",
            plotOutput("plot1")
            )
@@ -242,7 +246,6 @@ server <- function(input, output, session) {
   }
   pca_values <- function(pca_data){
     pca_data <- as.data.frame(pca_data)
-    print(input$variable)
     if(length(input$variable) < 2){
       pca2 <- princomp(pca_data[,c("Worker","income")], cor = TRUE, scores = T)
     } else {
@@ -347,6 +350,7 @@ server <- function(input, output, session) {
       plots <- NULL
       tmp <- NULL
       } else {
+        if (substring(input$STATEFP,1,2) %in% county_scores$STATEFP){
         var <- input$variable
         plots <- list()
         j <- 1
@@ -360,7 +364,22 @@ server <- function(input, output, session) {
         print(multiplot(plotlist = plots, cols = 2))
         plots <- NULL
         tmp <- NULL
-        gc()
+        gc() }
+        else if (input$STATEFP == "WEST"){
+          var <- input$variable
+          plots <- list()
+          j <- 1
+          for (i in var){
+            tmp<- as.data.frame(pca_data) %>%
+              select(i)
+            plots[[j]] <- ggplot(tmp, aes_string(x = i)) +geom_histogram() + xlab(i)
+            j = j + 1
+          }
+          print(multiplot(plotlist = plots, cols = 2))
+          plots <- NULL
+          tmp <- NULL
+          gc() 
+       }
       }
   })
 }
