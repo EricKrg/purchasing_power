@@ -1,0 +1,12 @@
+name: purchase_powerV1
+title: purchase_powerV1
+username:
+account: erickrg
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 298589
+bundleId: 1268350
+url: https://erickrg.shinyapps.io/purchase_powerV1/
+when: 1521038268.08759
+asMultiple: FALSE
+asStatic: FALSE

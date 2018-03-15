@@ -6,15 +6,42 @@
 #
 #    http://shiny.rstudio.com/
 #
-pacman::p_load(tidyverse, sf, sp, acs, mapview, tigris, data.table, ggbiplot, leaflet,
-               shiny, shinycssloaders)
+require(tidyverse)
+require(sf)
+require(sp)
+require(data.table)
+require(leaflet)
+require(shiny)
+#
+#
+# load data
+# is_local <- Sys.getenv('SHINY_PORT') == ""
+# if(is_local){
+#   pca_data <- readRDS("./purchase_power/data/pca_data.Rds")
+#   smp_counties <- readRDS("./purchase_power/data/counties.Rds")
+#   smp_tracts <- readRDS("./purchase_power/data/tracts.Rds")
+#   county_scores <- readRDS("./purchase_power/data/scores.Rds")
+#   state.west <- readRDS("./purchase_power/data/west.Rds")
+# } else{
+#   pca_data <- readRDS("./data/pca_data.Rds")
+#   smp_counties <- readRDS("./data/counties.Rds")
+#   smp_tracts <- readRDS("./data/tracts.Rds")
+#   county_scores <- readRDS("./data/scores.Rds")
+#   state.west <- readRDS("./data/west.Rds")}
 
+pca_data <- readRDS("./data/pca_data.Rds")
+smp_counties <- readRDS("./data/counties.Rds")
+smp_tracts <- readRDS("./data/tracts.Rds")
+county_scores <- readRDS("./data/scores.Rds")
+state.west <- readRDS("./data/west.Rds")
+gc()
 # Define UI for application that draws a histogram
-ui <- bootstrapPage(
+ui <- navbarPage("Purchasing Power USA", id = "nav",
+  tabPanel("Map",
   div(class = "outer",
   tags$head(
     # Include our custom CSS
-    includeCSS("style.css")),
+    includeCSS("./data/style.css")),
   leafletOutput("map", width ="100%", height = "100%"),
   absolutePanel(id = "better_panel",
                       class = "panel panel-default",
@@ -24,32 +51,66 @@ ui <- bootstrapPage(
                       left =  "auto",
                       top = 5,
                       bottom = "auto",
-                      fixed = TRUE,
-                      h3("Purchasing Power in the US (2010-2015)")),
+                      fixed = TRUE),
   absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
-                draggable = TRUE, top = 60, left = "auto" , right = 15, bottom = "auto",
-                width = 330, height = "auto",
+                draggable = TRUE, top = 50, left = "auto" , right = 15, bottom = "auto",
+                width = 440, height = "100%",
                 h3("Control Panel"),
-                selectInput('STATEFP', 'region',c(unique(county_scores$STATEFP), "WEST")),
-                sliderInput("var",
-                            "Number of var:",
-                            min = 1,
-                            max = 12,
-                            value = 30),
-  plotOutput("biplot")
-                )
-   )
-)
+                selectInput('STATEFP', 'region',c(paste0(unique(county_scores$STATEFP),
+                                                         " ",unique(state.west$name)), "WEST")),
+                checkboxGroupInput("variable", "Variables for PCA:",
+                                   c(colnames(pca_data[,1:12]))),
+  plotOutput("biplot"),
+  h5("Data from 2010-2015")
+                ))),
+  tabPanel("Data",
+           plotOutput("plot1")
+           )
+  )
+
+
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
 
   # data required: pca_data, tracts, counties
-  pca_data <- readRDS("./pca_data.Rds")
-  load("./shiny_files.Rdata")
+  multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+    library(grid)
 
+    # Make a list from the ... arguments and plotlist
+    plots <- c(list(...), plotlist)
+
+    numPlots = length(plots)
+
+    # If layout is NULL, then use 'cols' to determine layout
+    if (is.null(layout)) {
+      # Make the panel
+      # ncol: Number of columns of plots
+      # nrow: Number of rows needed, calculated from # of cols
+      layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                       ncol = cols, nrow = ceiling(numPlots/cols))
+    }
+
+    if (numPlots==1) {
+      print(plots[[1]])
+
+    } else {
+      # Set up the page
+      grid.newpage()
+      pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+      # Make each plot, in the correct location
+      for (i in 1:numPlots) {
+        # Get the i,j matrix positions of the regions that contain this subplot
+        matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+        print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                        layout.pos.col = matchidx$col))
+      }
+    }
+  }
   ggbiplot_custom <- function (pcobj, size ,choices = 1:2, scale = 1, pc.biplot = TRUE,
                                obs.scale = 1 - scale, var.scale = scale, groups = NULL,
-                               ellipse = FALSE, ellipse.prob = 0.68, labels = NULL, labels.size = 3,
+                               ellipse = FALSE, ellipse.prob = 0.68, labels = NULL, labels.size = 10,
                                alpha = 1, var.axes = TRUE, circle = FALSE, circle.prob = 0.69,
                                varname.size = 3, varname.adjust = 1.5, varname.abbrev = FALSE,
                                ...)
@@ -137,7 +198,7 @@ server <- function(input, output, session) {
       }
       g <- g + geom_segment(data = df.v, aes(x = 0, y = 0,
                                              xend = xvar, yend = yvar), arrow = arrow(length = unit(1/2,
-                                                                                                    "picas")), color = muted("cyan"), size = 3)
+                                                                                                    "picas")), color = muted("red"), size = 3)
     }
     if (!is.null(df.u$labels)) {
       if (!is.null(df.u$groups)) {
@@ -175,28 +236,37 @@ server <- function(input, output, session) {
     if (var.axes) {
       g <- g + geom_text(data = df.v, aes(label = varname,
                                           x = xvar, y = yvar, angle = angle, hjust = hjust),
-                         color = "cyan", size = varname.size)
+                         color = "red", size = varname.size)
     }
-    g <- g + theme_solarized(light =  F)
     return(g)
   }
   pca_values <- function(pca_data){
-    pca2 <- princomp(pca_data[,c(1:input$var)], cor = TRUE, scores = T)
-    pca2$loadings <- (pca2$loadings*-1)
-    pca2$scores <- (pca2$scores*-1)
+    pca_data <- as.data.frame(pca_data)
+    print(input$variable)
+    if(length(input$variable) < 2){
+      pca2 <- princomp(pca_data[,c("Worker","income")], cor = TRUE, scores = T)
+    } else {
+      pca2 <- princomp(pca_data[,input$variable], cor = TRUE, scores = T)
+      pca2$loadings <- (pca2$loadings*-1)
+      pca2$scores <- (pca2$scores*-1)
+    }
     return(pca2)
   }
   scores_fun <- function(in_scores){
-    scores <- as.data.frame(in_scores["scores"])[,1] + 100
-    scores <- data.frame(scores, TRACTCE = as.character(pca_data$tract_name2),
+    scores.sy <- as.data.table(in_scores["scores"])[,1] + 100
+    scores.sy <- data.table(scores.sy, TRACTCE = as.character(pca_data$tract_name2),
                          name = as.factor(pca_data$c_name),state_id = as.factor(pca_data$state_id))
-
-    tracts$state_id <- as.factor(gsub("^0","",tracts$STATEFP))
-    tract_scores <- left_join(tracts,scores, by = c("TRACTCE", "state_id"))
-    data_t <- data.table(tract_scores)
-    shiny_scores <- data_t[,mean(scores,na.rm = T), by =c("STATEFP","COUNTYFP")] # aggregation with data table
-    shiny_scores <- left_join(counties, shiny_scores)
-    rm(data_t,scores)
+    colnames(scores.sy)[1] <- "scores.sy"
+    tracts.dt <- as.data.table(smp_tracts)
+    tracts.dt$state_id <- as.factor(gsub("^0","",smp_tracts$STATEFP))
+    result <- tracts.dt[scores.sy, on = c("TRACTCE", "state_id"),
+                        allow.cartesian=TRUE]
+    shiny_scores <- result[,mean(scores.sy,na.rm = T), by =c("STATEFP","COUNTYFP")]
+    counties.dt <- as.data.table(smp_counties)
+    shiny_scores <- counties.dt[shiny_scores, on = c("STATEFP","COUNTYFP"),
+                                allow.cartesian=TRUE]
+    shiny_scores <- st_as_sf(shiny_scores)
+    gc()
     return(shiny_scores)
   }
   zoom <- function(region){
@@ -216,9 +286,9 @@ server <- function(input, output, session) {
   })
   filtered <- reactive({
     #filtered <- scores_fun(pca_values(pca_data))
-    if(input$STATEFP %in% county_scores$STATEFP){
+    if(substring(input$STATEFP,1,2) %in% county_scores$STATEFP){
       values$df <- scores_fun(pca_values(pca_data)) %>%
-        filter(STATEFP == input$STATEFP)
+        filter(STATEFP == substring(input$STATEFP,1,2))
     }
     else {
         if(input$STATEFP == "WEST"){
@@ -248,7 +318,7 @@ server <- function(input, output, session) {
     content <- paste0(
       "<b>","Purchasing Power: ","</b>", format(filtered()$V1,digits = 4))
 
-    withSpinner(leafletProxy("map", data = filtered()) %>%
+    leafletProxy("map", data = filtered()) %>%
       clearShapes() %>% addPolygons(highlightOptions = highlightOptions(color = "white", weight = 3,
                                                                         bringToFront = TRUE),
                                     fillColor = ~pal(V1),
@@ -259,7 +329,39 @@ server <- function(input, output, session) {
                                     popup = content) %>%
       setView(lng = mean(sf::st_coordinates(filtered())[,1]) ,
               lat =mean(sf::st_coordinates(filtered())[,2]) ,
-              zoom = zoom(input$STATEFP)))
+              zoom = zoom(substring(input$STATEFP,1,2)))
+  })
+  output$plot1 <- renderPlot({
+    if (length(input$variable)<2){
+      var <- c("Worker", "income")
+      plots <- list()
+      j <- 1
+      for (i in var){
+      tmp<- as.data.frame(pca_data) %>%
+        filter(state_id == as.numeric(substring(input$STATEFP,1,2))) %>%
+        select(i)
+      plots[[j]] <- ggplot(tmp, aes_string(x = i)) +geom_histogram() + xlab(i)
+      j = j + 1
+      }
+      print(multiplot(plotlist = plots, cols = 2))
+      plots <- NULL
+      tmp <- NULL
+      } else {
+        var <- input$variable
+        plots <- list()
+        j <- 1
+        for (i in var){
+          tmp<- as.data.frame(pca_data) %>%
+            filter(state_id == as.numeric(substring(input$STATEFP,1,2))) %>%
+            select(i)
+          plots[[j]] <- ggplot(tmp, aes_string(x = i)) +geom_histogram() + xlab(i)
+          j = j + 1
+        }
+        print(multiplot(plotlist = plots, cols = 2))
+        plots <- NULL
+        tmp <- NULL
+        gc()
+      }
   })
 }
 
