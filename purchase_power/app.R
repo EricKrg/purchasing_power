@@ -32,45 +32,65 @@ require(shinydashboard)
 
 pca_data <- readRDS("./data/pca_data.Rds")
 smp_counties <- readRDS("./data/counties.Rds")
-smp_tracts <- readRDS("./data/tracts.Rds")
-county_scores <- readRDS("./data/scores.Rds")
 state.west <- readRDS("./data/west.Rds")
+state <- readRDS("./data/state.Rds")
 gc()
 # Define UI for application that draws a histogram
-ui <- navbarPage("Purchasing Power USA", id = "nav",
-  tabPanel("Map",
-  div(class = "outer",
-  tags$head(
-    # Include our custom CSS
-    includeCSS("./data/style.css")),
-  leafletOutput("map", width ="100%", height = "100%"),
-  absolutePanel(id = "better_panel",
-                      class = "panel panel-default",
-                      width = "auto",
-                      height = 60,
-                      right = "auto",
-                      left =  "auto",
-                      top = 5,
-                      bottom = "auto",
-                      fixed = TRUE),
-  absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
-                draggable = FALSE, top = 60, left = "auto" , right = 15, bottom = "auto",
-                width = 440, height = "100%",
-                h3("Control Panel"),
-                selectInput('STATEFP', 'region',c(paste0(unique(county_scores$STATEFP),
-                                                         " ",unique(state.west$name)), "WEST")),
-                tags$div(align = "left",
-                         class = "multicol",
-                         checkboxGroupInput("variable", "PCA Variables",
-                                   c(colnames(pca_data[,1:12])),width = 400)),
-  plotOutput("biplot"),
-  box(title = "Information",status = "warning", solidHeader = TRUE,
-      includeMarkdown("./data/desc.md")
-                )))),
-  tabPanel("Data",
-           plotOutput("plot1")
-           )
+body <- dashboardBody(
+  includeCSS("./data/style.css"),
+  fluidRow(box(id = "better_panel", width = NULL,
+               title = "Purchasing Power in the US: 2010 - 2015"
+               ),
+    column(width = 8,
+           fluidRow(
+                    valueBoxOutput("progressBoxmin"),
+                    valueBoxOutput("progressBoxmean"),
+                    valueBoxOutput("progressBox")
+                    ),
+           tabBox(width = NULL,
+           tabPanel("Map",
+               width = NULL, status = "primary",
+               leafletOutput("map", height = 700)),
+           tabPanel("Data", plotOutput("plot1"))
+    )),
+  column(width = 4,
+      box(width = NULL,title = "Map control",
+      selectInput('STATEFP', 'region',c(paste0(unique(sort(smp_counties$STATEFP)),
+                                                           " ",unique(as.character(state$name))), "WEST", "All")),
+      sliderInput("range", "Score range:",
+                  min = 90, max = 110, step = 0.2,
+                  value = c(90,110))),
+      box(width = NULL, title = "PCA control",
+      tags$div(class = "multicol",
+                           checkboxGroupInput("variable", "",
+                                     c(colnames(pca_data[,1:12])),width = 400))),
+      box(width = NULL, title = "biplot", plotOutput("biplot"))
+  ))
+)
+  # absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
+  #               draggable = FALSE, top = 60, left = "auto" , right = 15, bottom = "auto",
+  #               width = 440, height = "100%",
+  #               selectInput('STATEFP', 'region',c(paste0(unique(county_scores$STATEFP),
+  #                                                        " ",unique(state.west$name)), "WEST")),
+  #               tags$div(align = "left",
+  #                        class = "multicol",
+  #                        checkboxGroupInput("variable", "PCA Variables",
+  #                                  c(colnames(pca_data[,1:12])),width = 400)),
+  # plotOutput("biplot"),
+  # box(title = "Information",status = "warning", solidHeader = TRUE,
+  #     includeMarkdown("./data/desc.md")
+  #               )))),
+  # tabPanel("Data",
+  #          plotOutput("plot1")
+  #          )
+  # )
+  ui <- dashboardPage( skin = "black",
+    dashboardHeader(disable = T),
+    dashboardSidebar(disable = T),
+    body
   )
+
+
 
 
 # Define server logic required to draw a histogram
@@ -247,7 +267,7 @@ server <- function(input, output, session) {
   pca_values <- function(pca_data){
     pca_data <- as.data.frame(pca_data)
     if(length(input$variable) < 2){
-      pca2 <- princomp(pca_data[,c("Worker","income")], cor = TRUE, scores = T)
+      pca2 <- princomp(pca_data[,c("employed","income")], cor = TRUE, scores = T)
     } else {
       pca2 <- princomp(pca_data[,input$variable], cor = TRUE, scores = T)
       pca2$loadings <- (pca2$loadings*-1)
@@ -257,23 +277,22 @@ server <- function(input, output, session) {
   }
   scores_fun <- function(in_scores){
     scores.sy <- as.data.table(in_scores["scores"])[,1] + 100
-    scores.sy <- data.table(scores.sy, TRACTCE = as.character(pca_data$tract_name2),
-                         name = as.factor(pca_data$c_name),state_id = as.factor(pca_data$state_id))
+    scores.sy <- data.table(scores.sy, name = as.factor(pca_data$c_name),
+                            STATEFP = as.factor(pca_data$state_id),
+                            COUNTYFP = as.factor(pca_data$COUNTYFP))
     colnames(scores.sy)[1] <- "scores.sy"
-    tracts.dt <- as.data.table(smp_tracts)
-    tracts.dt$state_id <- as.factor(gsub("^0","",smp_tracts$STATEFP))
-    result <- tracts.dt[scores.sy, on = c("TRACTCE", "state_id"),
-                        allow.cartesian=TRUE]
-    shiny_scores <- result[,mean(scores.sy,na.rm = T), by =c("STATEFP","COUNTYFP")]
     counties.dt <- as.data.table(smp_counties)
-    shiny_scores <- counties.dt[shiny_scores, on = c("STATEFP","COUNTYFP"),
-                                allow.cartesian=TRUE]
+    counties.dt$STATEFP <- gsub("^0","",counties.dt$STATEFP)
+    counties.dt$STATEFP <- as.factor(counties.dt$STATEFP)
+    counties.dt$COUNTYFP <- as.factor(counties.dt$COUNTYFP)
+    shiny_scores <- counties.dt[scores.sy, on = c("STATEFP","COUNTYFP"),
+                                allow.cartesian=T]
     shiny_scores <- st_as_sf(shiny_scores)
     gc()
     return(shiny_scores)
   }
   zoom <- function(region){
-    if(region %in% county_scores$STATEFP){
+    if(region %in% smp_counties$STATEFP){
       return(6)
   } else {
     return(4)
@@ -289,18 +308,24 @@ server <- function(input, output, session) {
   })
   filtered <- reactive({
     #filtered <- scores_fun(pca_values(pca_data))
-    if(substring(input$STATEFP,1,2) %in% county_scores$STATEFP){
+    if(trimws(gsub("^0","",gsub("[A-z].*","",input$STATEFP))) %in% gsub("^0","",smp_counties$STATEFP)){
       values$df <- scores_fun(pca_values(pca_data)) %>%
-        filter(STATEFP == substring(input$STATEFP,1,2))
+        filter(STATEFP == trimws(gsub("^0","",gsub("[A-z].*","",input$STATEFP)))) %>%
+        filter(scores.sy < max(input$range)) %>%
+        filter(scores.sy > min(input$range))
     }
     else {
-        if(input$STATEFP == "WEST"){
-          values$df <- scores_fun(pca_values(pca_data))
+        if(input$STATEFP == "All"){
+          values$df <-scores_fun(pca_values(pca_data))%>%
+            filter(scores.sy < max(input$range)) %>%
+            filter(scores.sy > min(input$range))
         }
     }
+    gc()
     return(values$df)
-
   })
+
+  #output
   output$biplot <- renderPlot({
      ggbiplot_custom(pca(), obs.scale = 1, var.scale = 1,scale = 0.4, size = 0.1,
                               ellipse = TRUE, circle = TRUE, lable.size = 5) +
@@ -315,16 +340,22 @@ server <- function(input, output, session) {
   })
 
   observe({
-    breaks.shiny <-classInt::classIntervals(filtered()$V1, n = 6,
-                                          style = "pretty",intervalClosure = "left")
-    pal <- colorNumeric("YlOrRd", domain = breaks.shiny$brks )
+    # breaks.shiny <-classInt::classIntervals(filtered()$scores.sy, n = 6,
+    #                                      style = "pretty",intervalClosure = "left")
+    if (min(input$range) == max(input$range)){
+      brks <- min(input$range)
+    } else {
+    brks <- seq(min(filtered()$scores.sy),max(filtered()$scores.sy)+0.5,by= 0.2)
+    #brks <- seq(90,110,by= 0.2)
+      }
+    pal <- colorNumeric("YlOrRd", domain = brks )
     content <- paste0(
-      "<b>","Purchasing Power: ","</b>", format(filtered()$V1,digits = 4))
+      "<b>","Purchasing Power: ","</b>", format(filtered()$scores.sy,digits = 4))
 
     leafletProxy("map", data = filtered()) %>%
       clearShapes() %>% addPolygons(highlightOptions = highlightOptions(color = "white", weight = 3,
                                                                         bringToFront = TRUE),
-                                    fillColor = ~pal(V1),
+                                    fillColor = ~pal(scores.sy),
                                     color = "white",
                                     opacity = 0.5,
                                     fillOpacity = 0.8,
@@ -336,12 +367,12 @@ server <- function(input, output, session) {
   })
   output$plot1 <- renderPlot({
     if (length(input$variable)<2){
-      var <- c("Worker", "income")
+      var <- c("employed", "income")
       plots <- list()
       j <- 1
       for (i in var){
       tmp<- as.data.frame(pca_data) %>%
-        filter(state_id == as.numeric(substring(input$STATEFP,1,2))) %>%
+        filter(state_id == trimws(gsub("^0","",gsub("[A-z].*","",input$STATEFP)))) %>%
         select(i)
       plots[[j]] <- ggplot(tmp, aes_string(x = i)) +geom_histogram() + xlab(i)
       j = j + 1
@@ -350,13 +381,13 @@ server <- function(input, output, session) {
       plots <- NULL
       tmp <- NULL
       } else {
-        if (substring(input$STATEFP,1,2) %in% county_scores$STATEFP){
+        if(trimws(gsub("^0","",gsub("[A-z].*","",input$STATEFP))) %in% gsub("^0","",smp_counties$STATEFP)){
         var <- input$variable
         plots <- list()
         j <- 1
         for (i in var){
           tmp<- as.data.frame(pca_data) %>%
-            filter(state_id == as.numeric(substring(input$STATEFP,1,2))) %>%
+            filter(state_id == trimws(gsub("^0","",gsub("[A-z].*","",input$STATEFP)))) %>%
             select(i)
           plots[[j]] <- ggplot(tmp, aes_string(x = i)) +geom_histogram() + xlab(i)
           j = j + 1
@@ -378,9 +409,39 @@ server <- function(input, output, session) {
           print(multiplot(plotlist = plots, cols = 2))
           plots <- NULL
           tmp <- NULL
-          gc() 
+          gc()
        }
       }
+  })
+  output$progressBox <- renderValueBox({
+    valueBox(
+      format(max(filtered()$scores.sy), digits = 4), paste0("PP max.: ",
+                                                            subset(filtered(),
+                                                                   filtered()$scores.sy == max(filtered()$scores.sy))$NAME),
+      icon = icon("list"),
+      color = "green"
+    )
+  })
+  output$progressBoxmean <- renderValueBox({
+    if(mean(filtered()$scores.sy) < 100){
+    valueBox(
+      format(mean(filtered()$scores.sy), digits = 4), "PP mean.", icon = icon("list"),
+      color = "orange"
+    )
+    } else {
+      valueBox(
+        format(mean(filtered()$scores.sy), digits = 4), "PP mean.", icon = icon("list"),
+        color = "lime"
+      )
+    }
+  })
+  output$progressBoxmin <- renderValueBox({
+    valueBox(
+      format(min(filtered()$scores.sy), digits = 4), paste0("PP min.: ",
+                                                            subset(filtered(), filtered()$scores.sy == min(filtered()$scores.sy))$NAME),
+                                                            icon = icon("list"),
+      color = "red"
+    )
   })
 }
 
